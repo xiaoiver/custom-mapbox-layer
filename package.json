@@ -1,0 +1,44 @@
+{
+  "name": "custom-mapbox-layer",
+  "version": "0.0.1",
+  "description": "A simple custom-mapbox-layer implemented in regl",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "webpack-dev-server --open --config ./webpack.config.dev.js",
+    "build": "NODE_ENV=production webpack --config ./webpack.config.prod.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xiaoiver/custom-mapbox-layer.git"
+  },
+  "author": "xiaoiver",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/xiaoiver/custom-mapbox-layer/issues"
+  },
+  "homepage": "https://github.com/xiaoiver/custom-mapbox-layer#readme",
+  "devDependencies": {
+    "@types/d3-dsv": "^1.0.36",
+    "@types/dat.gui": "^0.7.1",
+    "@types/stats.js": "^0.17.0",
+    "clean-webpack-plugin": "^0.1.19",
+    "copy-webpack-plugin": "^4.5.2",
+    "html-webpack-plugin": "^3.2.0",
+    "raw-loader": "^1.0.0",
+    "ts-loader": "^5.0.0",
+    "typescript": "^3.0.3",
+    "webpack": "^4.17.1",
+    "webpack-cli": "^3.1.0",
+    "webpack-dev-server": "^3.1.7",
+    "webpack-merge": "^4.1.4"
+  },
+  "dependencies": {
+    "@types/mapbox-gl": "^0.51.4",
+    "dat.gui": "^0.7.2",
+    "eventemitter3": "^3.1.0",
+    "mapbox-gl": "^0.53.0",
+    "regl": "^1.3.11",
+    "stats.js": "^0.17.0",
+    "whatwg-fetch": "^3.0.0"
+  }
+}
