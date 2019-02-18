@@ -5,7 +5,7 @@ const CleanWebpackPlugin = require('clean-webpack-plugin');
 const base = require('./webpack.config.base');
 
 // const PUBLIC_PATH = '/';
-const PUBLIC_PATH = '/mapbox/';
+const PUBLIC_PATH = '/custom-mapbox-layer/';
 
 module.exports = merge(base, {
   mode: 'production',
