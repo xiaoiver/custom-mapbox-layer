@@ -1,7 +1,7 @@
 import * as dat from 'dat.gui';
 import * as mapboxgl from 'mapbox-gl';
 import { csvParse } from 'd3-dsv';
-import { PointCloudLayer } from '../../src';
+import { PointCloudLayer2 } from '../../src';
 
 Object.getOwnPropertyDescriptor(mapboxgl, 'accessToken').set('pk.eyJ1IjoieGlhb2l2ZXIiLCJhIjoiY2pxcmc5OGNkMDY3cjQzbG42cXk5NTl3YiJ9.hUC5Chlqzzh0FFd_aEc-uQ');
 
@@ -30,7 +30,7 @@ map.on('load', async () => {
     // @ts-ignore
     const points: Array<{lng: number, lat: number}> = csvParse(rawCSVData);
 
-    const layer = new PointCloudLayer({
+    const layer = new PointCloudLayer2({
         instance: true,
         points
     });
@@ -46,29 +46,4 @@ map.on('load', async () => {
 
     // @ts-ignore
     map.addLayer(layer, labelLayerId);
-
-    // var geojson = {
-    //     "type": "FeatureCollection",
-    //     "features": [{
-    //         "type": "Feature",
-    //         "geometry": {
-    //             "type": "Point",
-    //             "coordinates": [121.498510, 31.289317]
-    //         }
-    //     }]
-    // };
-    // // @ts-ignore
-    // map.addSource('point', {
-    //     "type": "geojson",
-    //     "data": geojson
-    // });
-    // map.addLayer({
-    //     "id": "point",
-    //     "type": "circle",
-    //     "source": "point",
-    //     "paint": {
-    //         "circle-radius": 10,
-    //         "circle-color": "#3887be"
-    //     }
-    // });
 });
