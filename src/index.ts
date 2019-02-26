@@ -3,6 +3,9 @@ import PointCloudLayer from './layers/PointCloudLayer';
 import PointCloudLayer2 from './layers/PointCloudLayer2';
 import PointCloudLayer3 from './layers/PointCloudLayer3';
 import TriangleLayer from './layers/TriangleLayer';
+import { compileBuiltinModules } from './shaders';
+
+compileBuiltinModules();
 
 export {
     PointCloudLayer, // gl_Points, mercator in CPU

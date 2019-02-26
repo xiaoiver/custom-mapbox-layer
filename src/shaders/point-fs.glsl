@@ -1,8 +1,9 @@
 #extension GL_OES_standard_derivatives : enable
-precision highp float;
 
 uniform bool u_is_circle;
 varying vec4 v_color;
+
+#pragma include "common"
 
 void main() {
     float r = 0.0, delta = 0.0, alpha = 1.0;

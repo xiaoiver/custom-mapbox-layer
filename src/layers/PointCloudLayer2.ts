@@ -25,6 +25,7 @@ import pointVS from '../shaders/point-vs.glsl';
 import pointFS from '../shaders/point-fs.glsl';
 import { getDistanceScales, zoomToScale } from '../utils/web-mercator';
 import WebMercatorViewport from 'viewport-mercator-project';
+import { getModule } from '../utils/shader-module';
 
 interface IPointCloudLayerOptions {
     isCircle: boolean;
@@ -43,7 +44,7 @@ interface IPointCloudLayerDrawOptions {
     'u_pixels_per_meter': Array<number>;
     'u_viewport_center': Array<number>;
     'u_project_scale': number;
-    'u_viewport_center_world': Array<number>;
+    'u_viewport_center_projection': Array<number>;
 }
 
 const LNGLAT_AUTO_OFFSET_ZOOM_THRESHOLD = 12;
@@ -90,9 +91,12 @@ export default class PointCloudLayer2 extends MapboxAdapterLayer implements IPoi
             return prev;
         }, []);
 
+        const { vs, fs } = getModule('point2');
+        console.log(vs, fs);
+
         const reglDrawConfig: _regl.DrawConfig = {
-            frag: pointFS,
-            vert: pointVS,
+            frag: fs,
+            vert: vs,
             attributes: {
                 'a_color': [this.pointColor],
                 'a_pos': {
@@ -126,7 +130,7 @@ export default class PointCloudLayer2 extends MapboxAdapterLayer implements IPoi
                 // @ts-ignore
                 'u_project_scale': this.regl.prop('u_project_scale'),
                 // @ts-ignore
-                'u_viewport_center_world': this.regl.prop('u_viewport_center_world'),
+                'u_viewport_center_projection': this.regl.prop('u_viewport_center_projection'),
             },
             primitive: 'points',
             // primitive: 'triangle fan',
@@ -179,7 +183,7 @@ export default class PointCloudLayer2 extends MapboxAdapterLayer implements IPoi
             'u_viewport_center': [0, 0],
             'u_pixels_per_meter': [0, 0, 0],
             'u_project_scale': zoomToScale(currentZoomLevel),
-            'u_viewport_center_world': [0, 0, 0, 0],
+            'u_viewport_center_projection': [0, 0, 0, 0],
             // 'u_color': this.pointColor,
         };
 
@@ -218,7 +222,7 @@ export default class PointCloudLayer2 extends MapboxAdapterLayer implements IPoi
             drawParams['u_is_offset'] = true;
             drawParams['u_viewport_center'] = [Math.fround(center.lng), Math.fround(center.lat)];
             // @ts-ignore
-            drawParams['u_viewport_center_world'] = projectionCenter;
+            drawParams['u_viewport_center_projection'] = projectionCenter;
             drawParams['u_pixels_per_degree'] = pixelsPerDegree.map(p => Math.fround(p));
             drawParams['u_pixels_per_degree2'] = pixelsPerDegree2.map(p => Math.fround(p));
         }

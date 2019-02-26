@@ -6,6 +6,8 @@ uniform float u_point_size;
 
 varying vec4 v_color;
 
+#pragma include "common"
+
 void main() {
     v_color = a_color;
     gl_PointSize = u_point_size;

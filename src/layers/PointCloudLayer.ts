@@ -15,10 +15,7 @@ import * as vec4 from 'gl-matrix/vec4';
 import * as mapboxgl from 'mapbox-gl';
 import * as _regl from 'regl';
 import MapboxAdapterLayer from './MapboxAdapterLayer';
-// @ts-ignore
-import pointVS from '../shaders/point-vs-mapbox.glsl';
-// @ts-ignore
-import pointFS from '../shaders/point-fs.glsl';
+import { getModule } from '../utils/shader-module';
 import { getDistanceScales, zoomToScale, lngLatToWorld } from '../utils/web-mercator';
 
 interface IPointCloudLayerOptions {
@@ -37,7 +34,7 @@ interface IPointCloudLayerDrawOptions {
     'u_pixels_per_degree2': Array<number>;
     'u_pixels_per_meter': Array<number>;
     'u_viewport_center': Array<number>;
-    'u_viewport_center_world': Array<number>;
+    'u_viewport_center_projection': Array<number>;
     'u_scale': number;
 }
 
@@ -88,9 +85,10 @@ export default class PointCloudLayer extends MapboxAdapterLayer implements IPoin
             return [x, y];
         });
 
+        const { vs, fs } = getModule('point1');
         const reglDrawConfig: _regl.DrawConfig = {
-            frag: pointFS,
-            vert: pointVS,
+            frag: fs,
+            vert: vs,
             attributes: {
                 'a_color': [this.pointColor],
                 'a_pos': {
@@ -122,7 +120,7 @@ export default class PointCloudLayer extends MapboxAdapterLayer implements IPoin
                 // @ts-ignore
                 'u_viewport_center': this.regl.prop('u_viewport_center'),
                 // @ts-ignore
-                'u_viewport_center_world': this.regl.prop('u_viewport_center_world'),
+                'u_viewport_center_projection': this.regl.prop('u_viewport_center_projection'),
                 // @ts-ignore
                 'u_scale': this.regl.prop('u_scale'),
             },
@@ -160,7 +158,7 @@ export default class PointCloudLayer extends MapboxAdapterLayer implements IPoin
             'u_pixels_per_degree2': [0, 0, 0],
             'u_viewport_center': [0, 0],
             'u_pixels_per_meter': [0, 0, 0],
-            'u_viewport_center_world': [0, 0, 0, 0],
+            'u_viewport_center_projection': [0, 0, 0, 0],
         };
 
         this.drawPoints(drawParams);
