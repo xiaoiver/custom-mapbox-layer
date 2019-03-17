@@ -7,8 +7,9 @@ Object.getOwnPropertyDescriptor(mapboxgl, 'accessToken').set('pk.eyJ1IjoieGlhb2l
 
 const map = new mapboxgl.Map({
     container: 'map',
-    zoom: 11,
+    zoom: 12,
     center: [121.498510, 31.289317],
+    // center: [120.19382669582967, 30.258134],
     style: 'mapbox://styles/mapbox/light-v9'
 });
 

@@ -5,11 +5,16 @@ uniform vec3 u_pixels_per_degree2;
 uniform vec3 u_pixels_per_meter;
 uniform vec2 u_viewport_center;
 uniform vec4 u_viewport_center_projection;
+uniform vec2 u_viewport_size;
 
 #pragma include "common"
 
 float project_scale(float meters) {
     return meters * u_pixels_per_meter.z;
+}
+
+vec3 project_scale(vec3 position) {
+    return position * u_pixels_per_meter;
 }
 
 vec2 project_mercator(vec2 lnglat) {
@@ -39,4 +44,9 @@ vec4 project_position(vec4 position) {
             position.w
         );
     }
+}
+
+vec4 project_to_clipping_space(vec3 position) {
+    vec4 project_pos = project_position(vec4(position, 1.0));
+    return u_matrix * project_pos + u_viewport_center_projection;
 }

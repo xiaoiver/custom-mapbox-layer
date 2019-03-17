@@ -70,14 +70,8 @@ export function getDistanceScales(options: Partial<DistanceScalesOptions>): Part
       pixelsPerDegreeY = d(lngLatToWorld([lng, lat])[1])/d(lat)
         = -scale * TILE_SIZE * DEGREES_TO_RADIANS / cos(lat * DEGREES_TO_RADIANS)  / (2 * PI)
     */
-
   const pixelsPerDegreeX = worldSize / 360;
-  // const pixelsPerDegreeX = 1 / 360;
   const pixelsPerDegreeY = pixelsPerDegreeX / latCosine;
-  // const pixelsPerDegreeX = 1 / 360;
-  // // const pixelsPerDegreeY = pixelsPerDegreeX / latCosine;
-  // let lat = latitude * PI / 360 + PI / 4;
-  // const pixelsPerDegreeY = 1 / 720 * Math.pow(1 / Math.cos(lat), 2) / Math.tan(lat);
 
   /**
    * Number of pixels occupied by one meter around current lat/lon:
@@ -106,10 +100,6 @@ export function getDistanceScales(options: Partial<DistanceScalesOptions>): Part
   if (highPrecision) {
     const latCosine2 = DEGREES_TO_RADIANS * Math.tan(latitude * DEGREES_TO_RADIANS) / latCosine;
     const pixelsPerDegreeY2 = pixelsPerDegreeX * latCosine2 / 2;
-
-    // const pixelsPerDegreeY2 = - 1 / Math.LN10 / 720 * (PI / 180 * Math.pow(1 / Math.cos(lat), 2) * Math.pow(Math.tan(lat), 2) - PI / 360 * Math.pow(1 / Math.cos(lat), 4)) / Math.pow(Math.tan(lat), 2) / 2;
-
-    // console.log(pixelsPerDegreeY2)
 
     const altPixelsPerDegree2 = worldSize / EARTH_CIRCUMFERENCE * latCosine2;
     const altPixelsPerMeter2 = altPixelsPerDegree2 / pixelsPerDegreeY * altPixelsPerMeter;

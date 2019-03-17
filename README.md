@@ -5,7 +5,8 @@ npm run start
 ```
 
 Demo：
-* [点分布图](https://xiaoiver.github.io/custom-mapbox-layer/PointCloudLayer.html)
+* [点分布图](https://xiaoiver.github.io/custom-mapbox-layer/PointCloudLayer2.html)
+* [2D 线](https://xiaoiver.github.io/custom-mapbox-layer/LineLayer.html)
 
 ## TODO
 
