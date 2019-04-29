@@ -7,7 +7,7 @@ const PI = Math.PI;
 const PI_4 = PI / 4;
 const DEGREES_TO_RADIANS = PI / 180;
 const RADIANS_TO_DEGREES = 180 / PI;
-const TILE_SIZE = 512;
+export const TILE_SIZE = 512;
 // Average circumference (40075 km equatorial, 40007 km meridional)
 const EARTH_CIRCUMFERENCE = 40.03e6;
 

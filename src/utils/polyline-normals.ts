@@ -2,17 +2,6 @@
 import { direction, normal, computeMiter } from 'polyline-miter-util';
 import { create, copy, dot } from 'gl-vec2';
 
-let lineA = [0, 0];
-let lineB = [0, 0];
-let tangent = [0, 0];
-let miter = [0, 0];
-let _lastFlip = -1;
-let _started = false;
-let _normal: any = null;
-let tmp = create();
-let count = 0;
-const miterLimit = 3;
-
 function extrusions(
   positions: Array<Array<number>>,
   out: any,
@@ -27,7 +16,18 @@ function addNext(out: Array<Array<any>>, normal: Array<number>, length: number) 
   out.push([[normal[0], normal[1]], length]);
 }
 
-export default function(points: Array<Array<number>>, closed: boolean) {
+export default function(points: Array<Array<number>>, closed: boolean, indexOffset?: number) {
+  let lineA = [0, 0];
+  let lineB = [0, 0];
+  let tangent = [0, 0];
+  let miter = [0, 0];
+  let _lastFlip = -1;
+  let _started = false;
+  let _normal: any = null;
+  let tmp = create();
+  let count = indexOffset || 0;
+  const miterLimit = 3;
+
   const out: any = [];
   const attrPos: Array<Array<number>> = [];
   const attrIndex = [];
