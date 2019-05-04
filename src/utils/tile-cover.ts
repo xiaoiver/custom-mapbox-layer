@@ -1,5 +1,6 @@
 import MercatorCoordinate from '../geo/mercator_coordinate';
-import { Point } from 'mapbox-gl';
+// @ts-ignore
+import Point from '@mapbox/point-geometry';
 import { OverscaledTileID } from '../source/tile_id';
 
 interface Edge {
@@ -37,7 +38,7 @@ export default function tileCover(z: number, bounds: [MercatorCoordinate, Mercat
     }
   }
 
-  const zoomedBounds = bounds.map((coord) => new Point(coord.x, coord.y).mult(tiles));
+  const zoomedBounds = bounds.map((coord) => new Point(coord.x, coord.y)._mult(tiles));
 
   // Divide the screen up in two triangles and scan each of them:
   // +---/

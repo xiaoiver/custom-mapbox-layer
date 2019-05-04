@@ -9,10 +9,9 @@ import * as mapboxgl from 'mapbox-gl';
 import * as _regl from 'regl';
 // @ts-ignore
 import geojsonvt from 'geojson-vt';
-import { throttle } from 'lodash';
 import MapboxAdapterLayer from './MapboxAdapterLayer';
 import { getModule } from '../utils/shader-module';
-import { getDistanceScales, zoomToScale, lngLatToWorld, TILE_SIZE } from '../utils/web-mercator';
+import { zoomToScale, TILE_SIZE } from '../utils/web-mercator';
 import tileCover from '../utils/tile-cover';
 import getNormals from '../utils/polyline-normals';
 import MercatorCoordinate from '../geo/mercator_coordinate';

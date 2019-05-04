@@ -23,6 +23,13 @@ module.exports = {
         exclude: /node_modules/
       },
       {
+        test: /\.worker\.js$/,
+        use: {
+          loader: 'worker-loader',
+          options: { inline: true, fallback: false }
+        }
+      },
+      {
         test: /\.glsl?$/,
         use: 'raw-loader',
       }
@@ -33,7 +40,9 @@ module.exports = {
   },
   output: {
     filename: '[name].js',
-    path: resolve(__dirname, 'docs')
+    path: resolve(__dirname, 'docs'),
+    // https://github.com/webpack-contrib/worker-loader/issues/166
+    globalObject: 'this'
   },
   node: {
     fs: 'empty'
