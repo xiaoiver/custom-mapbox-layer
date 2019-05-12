@@ -23,6 +23,10 @@ import lineVTVS from '../shaders/line-vt-vs.glsl';
 import circleFS from '../shaders/circle-fs.glsl';
 // @ts-ignore
 import circleVS from '../shaders/circle-vs.glsl';
+// @ts-ignore
+import sdfFS from '../shaders/sdf-fs.glsl';
+// @ts-ignore
+import sdfVS from '../shaders/sdf-vs.glsl';
 
 export function compileBuiltinModules() {
     registerModule('point1', { vs: point1VS, fs: point1FS });
@@ -33,4 +37,5 @@ export function compileBuiltinModules() {
     registerModule('line3d', { vs: line3DVS, fs: line3DFS });
     registerModule('line-vt', { vs: lineVTVS, fs: lineFS });
     registerModule('circle', { vs: circleVS, fs: circleFS });
+    registerModule('sdf', { vs: sdfVS, fs: sdfFS });
 };

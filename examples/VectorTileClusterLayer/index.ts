@@ -42,6 +42,14 @@ map.on('load', async () => {
         layer.triggerRepaint();
     });
 
+    const textFolder = gui.addFolder('text');
+    textFolder.add(layer, 'textSize', 16, 256).onChange(() => {
+        layer.triggerRepaint();
+    });
+    textFolder.add(layer, 'textGamma', 0, 4).onChange(() => {
+        layer.triggerRepaint();
+    });
+
     // @ts-ignore
     map.addLayer(layer, labelLayerId);
 });

@@ -15,6 +15,7 @@ import { zoomToScale, TILE_SIZE } from '../utils/web-mercator';
 import tileCover from '../utils/tile-cover';
 import MercatorCoordinate from '../geo/mercator_coordinate';
 import { UnwrappedTileID, EXTENT } from '../source/tile_id';
+import { generateSDF } from '../utils/glyph-manager';
 
 interface IVectorTileLineLayerOptions {
   geoJSON: any;
@@ -53,10 +54,11 @@ interface IPointFeature {
 }
 
 export default class VectorTileClusterLayer extends MapboxAdapterLayer implements IVectorTileLineLayerOptions {
-  id = 'multiLine';
+  id = 'cluster';
   renderingMode = '2d';
 
   drawCircles: _regl.DrawCommand;
+  drawText: _regl.DrawCommand;
 
   // @ts-ignore
   public geoJSON = {};
@@ -65,6 +67,9 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
   public pointColor = [81, 187, 214];
   public strokeWidth = 2;
   public strokeColor = [255, 255, 255];
+  public textSize = 128;
+  public textGamma = 2;
+  public textHalo = 0.55;
 
   private tileIndex: any;
   private posMatrixCache: { [key: string]: Float32Array } = {};
@@ -78,7 +83,8 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     const reglOptions: Partial<_regl.InitializationOptions> = {};
     // https://blog.tojicode.com/2013/07/webgl-instancing-with.html
     reglOptions.extensions = [
-      'ANGLE_instanced_arrays'
+      'ANGLE_instanced_arrays',
+      'OES_standard_derivatives'
     ];
     // TODO: webgl2 support @see http://webglsamples.org/WebGL2Samples/#draw_instanced
     return reglOptions;
@@ -92,6 +98,11 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     });
     this.tileIndex.load(this.geoJSON);
 
+    this.initDrawCircleCommand();
+    this.initDrawTextCommand();
+  }
+
+  initDrawCircleCommand() {
     const { vs, fs } = getModule('circle');
     const reglDrawConfig: _regl.DrawConfig = {
       frag: fs,
@@ -136,10 +147,59 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     this.drawCircles = this.regl(reglDrawConfig);
   }
 
+  initDrawTextCommand() {
+    const { vs, fs } = getModule('sdf');
+    const reglDrawConfig: _regl.DrawConfig = {
+      frag: fs,
+      vert: vs,
+      attributes: {
+        // @ts-ignore
+        // 'a_color': this.regl.prop('a_color'),
+        // @ts-ignore
+        'a_pos': this.regl.prop('a_pos'),
+        'a_extrude': [
+          [-1, -1], [1, -1], [1, 1], [-1, 1]
+        ]
+      },
+      uniforms: {
+        // @ts-ignore
+        'u_matrix': this.regl.prop('u_matrix'),
+        // @ts-ignore
+        'u_sdf_map': this.regl.prop('u_sdf_map'),
+        // @ts-ignore
+        // 'u_gamma': this.textSize * window.devicePixelRatio / 2 / 24,
+        'u_gamma': this.textGamma,
+        // @ts-ignore
+        'u_extrude_scale': this.map.transform.pixelsToGLUnits
+      },
+      primitive: 'triangles',
+      elements: [
+        [0, 1, 2],
+        [2, 3, 0]
+      ],
+      instances: 1,
+      // blend: {
+      //   enable: true,
+      //   func: {
+      //     srcRGB: 'src alpha',
+      //     srcAlpha: 1,
+      //     dstRGB: 'one minus src alpha',
+      //     dstAlpha: 1
+      //   }
+      // }
+    };
+
+    this.drawText = this.regl(reglDrawConfig);
+  }
+
   renderClusters(clusters: IClusterFeature[], posMatrix: Float32Array) {
     const positionBuffer: [number, number][] = [];
     const radiusBuffer: number[] = [];
     const colorBuffer: [number, number, number, number][] = [];
+    const textArray: {
+      text: string;
+      position: number[];
+    }[] = [];
     clusters.forEach(cluster => {
       positionBuffer.push(cluster.geometry[0]);
       const pointCount = cluster.tags.point_count;
@@ -153,8 +213,13 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
         radiusBuffer.push(20);
         colorBuffer.push([81/255, 187/255, 214/255, 1]);
       }
+
+      textArray.push({
+        text: `${pointCount}`,
+        position: cluster.geometry[0]
+      });
     });
-    let drawParams: Partial<IVectorTileClusterLayerDrawOptions> = {
+    this.drawCircles({
       'u_matrix': posMatrix,
       'u_stroke_width': 0,
       'a_pos': {
@@ -174,8 +239,26 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
         divisor: 1
       },
       'instances': clusters.length
-    };
-    this.drawCircles(drawParams);
+    });
+
+    textArray.forEach(({ text, position }) => {
+      const sdf = generateSDF(text);
+
+      this.drawText({
+        'u_matrix': posMatrix,
+        'a_pos': {
+          buffer: this.regl.buffer([position]),
+          divisor: 1
+        },
+        'u_sdf_map': this.regl.texture({
+          width: sdf.width,
+          height: sdf.height,
+          mag: 'linear',
+          min: 'linear',
+          data: new Uint8Array(sdf.data)
+        })
+      });
+    });
   }
 
   renderPoints(clusters: IPointFeature[], posMatrix: Float32Array) {
