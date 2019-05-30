@@ -6,8 +6,11 @@ Object.getOwnPropertyDescriptor(mapboxgl, 'accessToken').set('pk.eyJ1IjoieGlhb2l
 
 const map = new mapboxgl.Map({
     container: 'map',
-    zoom: 8,
-    center: [-95.96471106679122, 28.604925848431535],
+    // zoom: 8,
+    // center: [-95.96471106679122, 28.604925848431535],
+    center: [ 102.602992, 23.107329],
+  // pitch: 15,
+  zoom: 14.82,
     style: 'mapbox://styles/mapbox/light-v9'
 });
 
@@ -24,7 +27,7 @@ map.on('load', async () => {
         }
     }
 
-    const response = await fetch('https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_10m_rivers_north_america.geojson');
+    const response = await fetch('https://gw.alipayobjects.com/os/rmsportal/ZVfOvhVCzwBkISNsuKCc.json');
     const layer = new VectorTileLineLayer({
         lineThickness: 6.8,
         geoJSON: await response.json()
