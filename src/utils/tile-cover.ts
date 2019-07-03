@@ -1,6 +1,6 @@
 import MercatorCoordinate from '../geo/mercator_coordinate';
 // @ts-ignore
-import Point from '@mapbox/point-geometry';
+import * as Point from '@mapbox/point-geometry';
 import { OverscaledTileID } from '../source/tile_id';
 
 interface Edge {

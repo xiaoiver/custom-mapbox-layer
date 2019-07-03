@@ -77,7 +77,20 @@ export default function(points: Array<Array<number>>, closed: boolean, indexOffs
       //get orientation
       let flip = (dot(tangent, _normal) < 0) ? -1 : 1;
       
-      const bevel = miterLen > miterLimit;
+      let bevel = miterLen > miterLimit;
+
+      // 处理相邻线段重叠的情况
+      if (!isFinite(miterLen)) {
+        normal(_normal, lineA) //reset normal
+        extrusions(attrPos, out, cur, _normal, 1);
+        attrIndex.push(
+          _lastFlip===1 ? [index, index+2, index+3] : [index+2, index+1, index+3]);
+
+        count += 2;
+        _lastFlip = flip;
+        continue;
+      }
+
       if (bevel) {
         miterLen = miterLimit;
         attrCounters.push(i/total);

@@ -19,7 +19,6 @@ import MapboxAdapterLayer from './MapboxAdapterLayer';
 import pointVS from '../shaders/point-vs-extrude.glsl';
 // @ts-ignore
 import pointFS from '../shaders/point-fs-extrude.glsl';
-import { getDistanceScales, zoomToScale, lngLatToWorld } from '../utils/web-mercator';
 
 interface IPointCloudLayerOptions {
     isCircle: boolean;
@@ -34,7 +33,7 @@ interface IPointCloudLayerDrawOptions {
     'u_extrude_scale': Array<number>;
 }
 
-const LNGLAT_AUTO_OFFSET_ZOOM_THRESHOLD = 12;
+// const LNGLAT_AUTO_OFFSET_ZOOM_THRESHOLD = 12;
 
 export default class PointCloudLayer3 extends MapboxAdapterLayer implements IPointCloudLayerOptions {
     id = 'pointcloud';
@@ -67,12 +66,15 @@ export default class PointCloudLayer3 extends MapboxAdapterLayer implements IPoi
 
     init(map: mapboxgl.Map, gl: WebGLRenderingContext) {
         // convert mercator coords to world in CPU.
+        // @ts-ignore
         this.points = this.points
         .slice(0, 4)
         .map(p => {
             // @ts-ignore
             const {x, y} = mapboxgl.MercatorCoordinate.fromLngLat({
+                // @ts-ignore
                 lng: p.lng,
+                // @ts-ignore
                 lat: p.lat
             });
 
@@ -145,10 +147,6 @@ export default class PointCloudLayer3 extends MapboxAdapterLayer implements IPoi
     }
 
     frame(gl: WebGLRenderingContext, m: Array<number>) {
-        const currentZoomLevel = this.map.getZoom();
-
-        console.log('currentZoomLevel: ', currentZoomLevel);
-        const currentScale = zoomToScale(currentZoomLevel);
         const pixelsToGLUnits = [2 / gl.drawingBufferWidth, -2 / gl.drawingBufferHeight];
 
         let drawParams: Partial<IPointCloudLayerDrawOptions> = {

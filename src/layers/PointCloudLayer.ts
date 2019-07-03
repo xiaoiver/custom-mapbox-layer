@@ -16,7 +16,7 @@ import * as mapboxgl from 'mapbox-gl';
 import * as _regl from 'regl';
 import MapboxAdapterLayer from './MapboxAdapterLayer';
 import { getModule } from '../utils/shader-module';
-import { getDistanceScales, zoomToScale, lngLatToWorld } from '../utils/web-mercator';
+import { zoomToScale } from '../utils/web-mercator';
 
 interface IPointCloudLayerOptions {
     isCircle: boolean;
@@ -38,7 +38,7 @@ interface IPointCloudLayerDrawOptions {
     'u_scale': number;
 }
 
-const LNGLAT_AUTO_OFFSET_ZOOM_THRESHOLD = 12;
+// const LNGLAT_AUTO_OFFSET_ZOOM_THRESHOLD = 12;
 
 export default class PointCloudLayer extends MapboxAdapterLayer implements IPointCloudLayerOptions {
     id = 'pointcloud';
@@ -74,11 +74,14 @@ export default class PointCloudLayer extends MapboxAdapterLayer implements IPoin
 
     init(map: mapboxgl.Map, gl: WebGLRenderingContext) {
         // convert mercator coords to world in CPU.
+        // @ts-ignore
         this.points = this.points
         .map(p => {
             // @ts-ignore
             const {x, y} = mapboxgl.MercatorCoordinate.fromLngLat({
+                // @ts-ignore
                 lng: p.lng,
+                // @ts-ignore
                 lat: p.lat
             });
 

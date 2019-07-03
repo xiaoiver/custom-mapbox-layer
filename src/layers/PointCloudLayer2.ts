@@ -80,7 +80,9 @@ export default class PointCloudLayer2 extends MapboxAdapterLayer implements IPoi
         let points = this.points
         .reduce((prev, cur) => {
             prev.push([
+                // @ts-ignore
                 Math.fround(Number(cur.lng)), 
+                // @ts-ignore
                 Math.fround(Number(cur.lat))
             ]);
             return prev;
@@ -182,9 +184,9 @@ export default class PointCloudLayer2 extends MapboxAdapterLayer implements IPoi
         };
 
         if (currentZoomLevel > LNGLAT_AUTO_OFFSET_ZOOM_THRESHOLD) {
-            const newMatrix: Array<number> = [];
+            // const newMatrix: Array<number> = [];
 
-            const { pixelsPerDegree, pixelsPerDegree2, pixelsPerMeter } = getDistanceScales({
+            const { pixelsPerDegree, pixelsPerDegree2 } = getDistanceScales({
                 longitude: center.lng,
                 latitude: center.lat,
                 zoom: currentZoomLevel,
@@ -217,8 +219,8 @@ export default class PointCloudLayer2 extends MapboxAdapterLayer implements IPoi
             drawParams['u_viewport_center'] = [Math.fround(center.lng), Math.fround(center.lat)];
             // @ts-ignore
             drawParams['u_viewport_center_projection'] = projectionCenter;
-            drawParams['u_pixels_per_degree'] = pixelsPerDegree.map(p => Math.fround(p));
-            drawParams['u_pixels_per_degree2'] = pixelsPerDegree2.map(p => Math.fround(p));
+            drawParams['u_pixels_per_degree'] = pixelsPerDegree && pixelsPerDegree.map(p => Math.fround(p));
+            drawParams['u_pixels_per_degree2'] = pixelsPerDegree2 && pixelsPerDegree2.map(p => Math.fround(p));
         }
 
         this.drawPoints(drawParams);

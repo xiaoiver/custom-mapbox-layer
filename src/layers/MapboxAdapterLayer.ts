@@ -28,7 +28,7 @@ export default abstract class MapboxAdapterLayer implements mapboxgl.Layer {
         $stats.style.position = 'absolute';
         $stats.style.left = '0px';
         $stats.style.top = '0px';
-        document.getElementById('stats').appendChild($stats);
+        document.body.appendChild($stats);
     }
 
     public triggerRepaint() {
@@ -55,7 +55,12 @@ export default abstract class MapboxAdapterLayer implements mapboxgl.Layer {
      * @param matrix 
      */
     render(gl: WebGLRenderingContext, matrix: Array<number>) {
-        this.stats.update();
+        if (!this.stats) {
+            this.initStats();
+        }
+        if (this.stats) {
+            this.stats.update();
+        }
         this.frame(gl, matrix);
     }
 }

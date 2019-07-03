@@ -16,6 +16,13 @@ import tileCover from '../utils/tile-cover';
 import MercatorCoordinate from '../geo/mercator_coordinate';
 import { UnwrappedTileID, EXTENT } from '../source/tile_id';
 import { generateSDF } from '../utils/glyph-manager';
+import { shapeText, SymbolAnchor, TextJustify } from '../utils/symbol-layout';
+import GlyphAtlas from '../symbol/GlyphAtlas';
+import { StyleGlyph } from '../symbol/AlphaImage';
+import { getGlyphQuads } from '../symbol/SymbolQuad';
+// @ts-ignore
+import * as Point from '@mapbox/point-geometry';
+import { getLabelPlaneMatrix, getGlCoordMatrix, pixelsToTileUnits } from '../utils/symbol-projection';
 
 interface IVectorTileLineLayerOptions {
   geoJSON: any;
@@ -53,12 +60,15 @@ interface IPointFeature {
   geometry: [number, number][];
 }
 
+const defaultFontStack = 'sans-serif';
+
 export default class VectorTileClusterLayer extends MapboxAdapterLayer implements IVectorTileLineLayerOptions {
   id = 'cluster';
   renderingMode = '2d';
 
   drawCircles: _regl.DrawCommand;
   drawText: _regl.DrawCommand;
+  drawDebugSDF: _regl.DrawCommand;
 
   // @ts-ignore
   public geoJSON = {};
@@ -67,12 +77,24 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
   public pointColor = [81, 187, 214];
   public strokeWidth = 2;
   public strokeColor = [255, 255, 255];
-  public textSize = 128;
-  public textGamma = 2;
-  public textHalo = 0.55;
+
+  public fontSize = 14.;
+  public fontColor = [0, 0, 0];
+  public fontOpacity = 1.0;
+  public haloColor = [255, 255, 255];
+  public haloWidth = 1.0;
+  public haloBlur = 0.2;
+
+  public symbolAnchor: SymbolAnchor = 'center';
+  public textJustify: TextJustify = 'center';
+
+  public debug: boolean = false;
 
   private tileIndex: any;
   private posMatrixCache: { [key: string]: Float32Array } = {};
+  private glyphAtlas: GlyphAtlas;
+  private glyphMap: { [key: number]: StyleGlyph };
+  private glyphAtlasTexture: any;
 
   constructor(options: Partial<IVectorTileLineLayerOptions>) {
     super();
@@ -100,6 +122,8 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
 
     this.initDrawCircleCommand();
     this.initDrawTextCommand();
+    this.initDrawDebugSDFCommand();
+    this.initGlyphAtlas();
   }
 
   initDrawCircleCommand() {
@@ -129,7 +153,7 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
         'u_stroke_width': this.regl.prop('u_stroke_width'),
         'u_stroke_opacity': 1,
         // @ts-ignore
-        'u_extrude_scale': this.map.transform.pixelsToGLUnits
+        'u_extrude_scale': this.map.transform.pixelsToGLUnits,
       },
       primitive: 'triangles',
       elements: [
@@ -154,45 +178,88 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
       vert: vs,
       attributes: {
         // @ts-ignore
-        // 'a_color': this.regl.prop('a_color'),
-        // @ts-ignore
         'a_pos': this.regl.prop('a_pos'),
+        // @ts-ignore
+        'a_tex': this.regl.prop('a_tex'),
+        // @ts-ignore
+        'a_offset': this.regl.prop('a_offset'),
+      },
+      uniforms: {
+        // @ts-ignore
+        'u_matrix': this.regl.prop('u_matrix'),
+        // @ts-ignore
+        'u_label_matrix': this.regl.prop('u_label_matrix'),
+        // @ts-ignore
+        'u_gl_matrix': this.regl.prop('u_gl_matrix'),
+        // @ts-ignore
+        'u_sdf_map': this.regl.prop('u_sdf_map'),
+        // @ts-ignore
+        'u_gamma_scale': Math.cos(this.map.transform._pitch),
+        // @ts-ignore
+        'u_extrude_scale': this.map.transform.pixelsToGLUnits,
+        // @ts-ignore
+        'u_sdf_map_size': this.regl.prop('u_sdf_map_size'),
+        'u_font_size': () => this.fontSize,
+        'u_font_color': () => [...this.fontColor.map(c => c / 255), 1],
+        'u_font_opacity': () => this.fontOpacity,
+        'u_halo_width': () => this.haloWidth,
+        'u_halo_blur': () => this.haloBlur,
+        'u_halo_color': () => [...this.haloColor.map(c => c / 255), 1],
+        'u_debug': () => this.debug,
+      },
+      primitive: 'triangles',
+      // @ts-ignore
+      elements: this.regl.prop('elements'),
+    };
+
+    this.drawText = this.regl(reglDrawConfig);
+  }
+
+  initDrawDebugSDFCommand() {
+    const { vs, fs } = getModule('quad');
+    const reglDrawConfig: _regl.DrawConfig = {
+      frag: fs,
+      vert: vs,
+      attributes: {
         'a_extrude': [
           [-1, -1], [1, -1], [1, 1], [-1, 1]
         ]
       },
       uniforms: {
         // @ts-ignore
-        'u_matrix': this.regl.prop('u_matrix'),
-        // @ts-ignore
         'u_sdf_map': this.regl.prop('u_sdf_map'),
-        // @ts-ignore
-        // 'u_gamma': this.textSize * window.devicePixelRatio / 2 / 24,
-        'u_gamma': this.textGamma,
-        // @ts-ignore
-        'u_extrude_scale': this.map.transform.pixelsToGLUnits
       },
       primitive: 'triangles',
       elements: [
         [0, 1, 2],
         [2, 3, 0]
       ],
-      instances: 1,
-      // blend: {
-      //   enable: true,
-      //   func: {
-      //     srcRGB: 'src alpha',
-      //     srcAlpha: 1,
-      //     dstRGB: 'one minus src alpha',
-      //     dstAlpha: 1
-      //   }
-      // }
     };
 
-    this.drawText = this.regl(reglDrawConfig);
+    this.drawDebugSDF = this.regl(reglDrawConfig);
   }
 
-  renderClusters(clusters: IClusterFeature[], posMatrix: Float32Array) {
+  initGlyphAtlas() {
+    const glyphMap = '0123456789个总数'.split('').map(char => {
+      return generateSDF('', char);
+    }).reduce((prev, cur) => {
+      // @ts-ignore
+      prev[cur.id] = cur;
+      return prev;
+    }, {});
+
+    if (!this.glyphMap) {
+      this.glyphMap = {};
+    }
+
+    this.glyphMap[defaultFontStack] = glyphMap;
+    
+    this.glyphAtlas = new GlyphAtlas(this.glyphMap);
+
+    this.glyphAtlasTexture = this.regl.texture();
+  }
+
+  renderClusters(clusters: IClusterFeature[], posMatrix: Float32Array, overscaledZ: number) {
     const positionBuffer: [number, number][] = [];
     const radiusBuffer: number[] = [];
     const colorBuffer: [number, number, number, number][] = [];
@@ -215,7 +282,7 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
       }
 
       textArray.push({
-        text: `${pointCount}`,
+        text: `${pointCount}个总数`,
         position: cluster.geometry[0]
       });
     });
@@ -241,23 +308,80 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
       'instances': clusters.length
     });
 
-    textArray.forEach(({ text, position }) => {
-      const sdf = generateSDF(text);
+    // @ts-ignore
+    const s = pixelsToTileUnits(overscaledZ, 1, this.map.transform.zoom);
+    // @ts-ignore
+    const labelPlaneMatrix = getLabelPlaneMatrix(posMatrix, false, false, this.map.transform, s);
+    // @ts-ignore
+    const glCoordMatrix = getGlCoordMatrix(posMatrix, false, false, this.map.transform, s);
 
-      this.drawText({
-        'u_matrix': posMatrix,
-        'a_pos': {
-          buffer: this.regl.buffer([position]),
-          divisor: 1
-        },
-        'u_sdf_map': this.regl.texture({
-          width: sdf.width,
-          height: sdf.height,
-          mag: 'linear',
-          min: 'linear',
-          data: new Uint8Array(sdf.data)
-        })
-      });
+    const charPositionBuffer: number[][] = [];
+    const charUVBuffer: [number, number][] = [];
+    const charOffsetBuffer: [number, number][] = [];
+    const indexBuffer: [number, number, number][] = [];
+    const { width, height, data } = this.glyphAtlas.image;
+
+    const textOffset: [number, number] = [ 0, 0 ];
+    let i = 0;
+    textArray.forEach(({ text, position }) => {
+      // 锚点
+      // const anchor = new Point(position[0], position[1]);
+      // 计算布局
+      const shaping = shapeText(text, this.glyphMap, defaultFontStack, 0, 24, this.symbolAnchor, this.textJustify, 2, textOffset, 1);
+
+      if (shaping) {
+        // 计算每个独立字符相对于锚点的位置信息
+        const glyphQuads = getGlyphQuads(shaping, textOffset,
+          false, this.glyphAtlas.positions);
+        
+        
+        glyphQuads.forEach(quad => {
+          // TODO: vertex compression
+          charPositionBuffer.push(position);
+          charPositionBuffer.push(position);
+          charPositionBuffer.push(position);
+          charPositionBuffer.push(position);
+
+          charUVBuffer.push([ quad.tex.x, quad.tex.y ]);
+          charUVBuffer.push([ quad.tex.x + quad.tex.w, quad.tex.y ]);
+          charUVBuffer.push([ quad.tex.x + quad.tex.w, quad.tex.y + quad.tex.h ]);
+          charUVBuffer.push([ quad.tex.x, quad.tex.y + quad.tex.h ]);
+       
+          charOffsetBuffer.push([ quad.tl.x, quad.tl.y ]);
+          charOffsetBuffer.push([ quad.tr.x, quad.tr.y ]);
+          charOffsetBuffer.push([ quad.br.x, quad.br.y ]);
+          charOffsetBuffer.push([ quad.bl.x, quad.bl.y ]);
+
+          indexBuffer.push([0 + i, 1 + i, 2 + i]);
+          indexBuffer.push([2 + i, 3 + i, 0 + i]);
+          i += 4;
+        });
+      }
+    });
+    
+    this.drawText({
+      'u_matrix': posMatrix,
+      'u_label_matrix': labelPlaneMatrix,
+      'u_gl_matrix': glCoordMatrix,
+      'a_pos': {
+        buffer: this.regl.buffer(charPositionBuffer),
+      },
+      'a_tex': {
+        buffer: this.regl.buffer(charUVBuffer),
+      },
+      'a_offset': {
+        buffer: this.regl.buffer(charOffsetBuffer),
+      },
+      'u_sdf_map': this.glyphAtlasTexture({
+        width,
+        height,
+        mag: 'linear',
+        min: 'linear',
+        format: 'alpha',
+        data
+      }),
+      'u_sdf_map_size': [ width, height ],
+      'elements': indexBuffer,
     });
   }
 
@@ -321,7 +445,7 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
       if (t && t.features && t.features.length) {
         const clusters = t.features.filter((f: IClusterFeature) => f.id);
         const singlePoints = t.features.filter((f: IClusterFeature) => !f.id);
-        this.renderClusters(clusters, tile.posMatrix);
+        this.renderClusters(clusters, tile.posMatrix, tile.overscaledZ);
         this.renderPoints(singlePoints, tile.posMatrix);
       }
     });
@@ -329,6 +453,22 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
 
   frame(gl: WebGLRenderingContext, m: Array<number>) {
     this.renderTiles();
+
+    if (this.debug) {
+      // draw SDF for debug
+      const { width, height, data } = this.glyphAtlas.image;
+      this.drawDebugSDF({
+        'u_sdf_map': this.glyphAtlasTexture({
+          width,
+          height,
+          mag: 'linear',
+          min: 'linear',
+          format: 'alpha',
+          flipY: true,
+          data
+        })
+      });
+    }
   }
 
   calculatePosMatrix(unwrappedTileID: UnwrappedTileID, currentScale: number): Float32Array {

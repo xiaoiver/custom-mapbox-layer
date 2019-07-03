@@ -191,7 +191,7 @@ export default class VectorTileLineLayer extends MapboxAdapterLayer implements I
       });
     });
 
-    console.table(stats);
+    // console.table(stats);
   }
 
   frame(gl: WebGLRenderingContext, m: Array<number>) {

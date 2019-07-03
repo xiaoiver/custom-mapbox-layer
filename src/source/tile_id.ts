@@ -1,10 +1,10 @@
 // borrow from mapbox-gl-js
 
 // @ts-ignore
-import Point from '@mapbox/point-geometry';
+import * as Point from '@mapbox/point-geometry';
 import MercatorCoordinate from '../geo/mercator_coordinate';
 // @ts-ignore
-import assert from 'assert';
+import * as assert from 'assert';
 
 /**
 * The maximum value of a coordinate in the internal tile coordinate system. Coordinates of

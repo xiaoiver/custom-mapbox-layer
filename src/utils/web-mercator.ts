@@ -6,13 +6,13 @@
 const PI = Math.PI;
 const PI_4 = PI / 4;
 const DEGREES_TO_RADIANS = PI / 180;
-const RADIANS_TO_DEGREES = 180 / PI;
+// const RADIANS_TO_DEGREES = 180 / PI;
 export const TILE_SIZE = 512;
 // Average circumference (40075 km equatorial, 40007 km meridional)
 const EARTH_CIRCUMFERENCE = 40.03e6;
 
 // Mapbox default altitude
-const DEFAULT_ALTITUDE = 1.5;
+// const DEFAULT_ALTITUDE = 1.5;
 
 export function zoomToScale(zoom: number) {
   return Math.pow(2, zoom);
@@ -53,7 +53,7 @@ export function lngLatToWorld([lng, lat], scale: number) {
  */
 export function getDistanceScales(options: Partial<DistanceScalesOptions>): Partial<DistanceScales> {
   let {
-    latitude, longitude, zoom, scale, highPrecision = false
+    latitude = 0, zoom = 1, scale, highPrecision = false
   } = options
 
   // Calculate scale from zoom if not provided

@@ -17,7 +17,6 @@ void main() {
     float antialiased_blur = -max(u_blur, antialiasblur);
 
     float opacity_t = smoothstep(0.0, antialiased_blur, extrude_length - 1.0);
-    // float opacity_t = smoothstep(antialiased_blur, 0.0, 1.0 - extrude_length);
 
     float color_t = u_stroke_width < 0.01 ? 0.0 : smoothstep(
         antialiased_blur,

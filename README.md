@@ -13,14 +13,8 @@
 [使用 k-d tree 实现点聚合图](https://zhuanlan.zhihu.com/p/64450167)
 
 ```bash
-npm run start
+npm run storybook
 ```
-
-Demo：
-* [点分布图](https://xiaoiver.github.io/custom-mapbox-layer/PointCloudLayer2.html)
-* [2D 线](https://xiaoiver.github.io/custom-mapbox-layer/LineLayer.html)
-* [使用数据瓦片展示线](https://xiaoiver.github.io/custom-mapbox-layer/VectorTileLineLayer.html)
-* [使用数据瓦片展示点聚合效果](https://xiaoiver.github.io/custom-mapbox-layer/VectorTileClusterLayer.html)
 
 ## TODO
 

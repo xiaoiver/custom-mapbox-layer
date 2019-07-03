@@ -79,7 +79,9 @@ export default class Line3DLayer extends MapboxAdapterLayer implements ILineLaye
         let points = this.points
         .reduce((prev, cur) => {
             prev.push([
-                Math.fround(Number(cur.lng)), 
+                // @ts-ignore
+                Math.fround(Number(cur.lng)),
+                // @ts-ignore 
                 Math.fround(Number(cur.lat)),
             ]);
             return prev;
@@ -245,7 +247,7 @@ export default class Line3DLayer extends MapboxAdapterLayer implements ILineLaye
             'u_matrix': viewProjectionMatrix,
             'u_thickness': this.lineThickness,
             'u_is_offset': false,
-            'u_pixels_per_degree': pixelsPerDegree.map(p => Math.fround(p)),
+            'u_pixels_per_degree': pixelsPerDegree && pixelsPerDegree.map(p => Math.fround(p)),
             'u_pixels_per_degree2': [0, 0, 0],
             'u_viewport_center': [0, 0],
             'u_viewport_size': viewportSize,
@@ -292,8 +294,8 @@ export default class Line3DLayer extends MapboxAdapterLayer implements ILineLaye
             drawParams['u_viewport_center'] = [Math.fround(center.lng), Math.fround(center.lat)];
             // @ts-ignore
             drawParams['u_viewport_center_projection'] = projectionCenter;
-            drawParams['u_pixels_per_degree'] = pixelsPerDegree.map(p => Math.fround(p));
-            drawParams['u_pixels_per_degree2'] = pixelsPerDegree2.map(p => Math.fround(p));
+            drawParams['u_pixels_per_degree'] = pixelsPerDegree && pixelsPerDegree.map(p => Math.fround(p));
+            drawParams['u_pixels_per_degree2'] = pixelsPerDegree2 && pixelsPerDegree2.map(p => Math.fround(p));
         }
 
         this.drawPoints(drawParams);

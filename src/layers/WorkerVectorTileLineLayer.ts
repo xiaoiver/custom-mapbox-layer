@@ -6,6 +6,7 @@
 
 import * as mapboxgl from 'mapbox-gl';
 import * as _regl from 'regl';
+// @ts-ignore
 import Worker from 'worker-loader!../worker/worker';
 import MapboxAdapterLayer from './MapboxAdapterLayer';
 import { getModule } from '../utils/shader-module';

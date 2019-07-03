@@ -1,32 +1,36 @@
 import { registerModule } from '../utils/shader-module';
 // @ts-ignore
-import common from './common.glsl';
+import * as common from './common.glsl';
 // @ts-ignore
-import project from './project.glsl';
+import * as project from './project.glsl';
 // @ts-ignore
-import point1VS from '../shaders/point-vs-mapbox.glsl';
+import * as point1VS from './point-vs-mapbox.glsl';
 // @ts-ignore
-import point1FS from '../shaders/point-fs.glsl';
+import * as point1FS from './point-fs.glsl';
 // @ts-ignore
-import point2VS from '../shaders/point-vs.glsl';
+import * as point2VS from './point-vs.glsl';
 // @ts-ignore
-import lineFS from '../shaders/line-fs.glsl';
+import * as lineFS from './line-fs.glsl';
 // @ts-ignore
-import lineVS from '../shaders/line-vs.glsl';
+import * as lineVS from './line-vs.glsl';
 // @ts-ignore
-import line3DFS from '../shaders/line-3d-fs.glsl';
+import * as line3DFS from './line-3d-fs.glsl';
 // @ts-ignore
-import line3DVS from '../shaders/line-3d-vs.glsl';
+import * as line3DVS from './line-3d-vs.glsl';
 // @ts-ignore
-import lineVTVS from '../shaders/line-vt-vs.glsl';
+import * as lineVTVS from './line-vt-vs.glsl';
 // @ts-ignore
-import circleFS from '../shaders/circle-fs.glsl';
+import * as circleFS from './circle-fs.glsl';
 // @ts-ignore
-import circleVS from '../shaders/circle-vs.glsl';
+import * as circleVS from './circle-vs.glsl';
 // @ts-ignore
-import sdfFS from '../shaders/sdf-fs.glsl';
+import * as sdfFS from './sdf-fs.glsl';
 // @ts-ignore
-import sdfVS from '../shaders/sdf-vs.glsl';
+import * as sdfVS from './sdf-vs.glsl';
+// @ts-ignore
+import * as quadFS from './quad-fs.glsl';
+// @ts-ignore
+import * as quadVS from './quad-vs.glsl';
 
 export function compileBuiltinModules() {
     registerModule('point1', { vs: point1VS, fs: point1FS });
@@ -38,4 +42,5 @@ export function compileBuiltinModules() {
     registerModule('line-vt', { vs: lineVTVS, fs: lineFS });
     registerModule('circle', { vs: circleVS, fs: circleFS });
     registerModule('sdf', { vs: sdfVS, fs: sdfFS });
+    registerModule('quad', { vs: quadVS, fs: quadFS });
 };
