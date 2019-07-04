@@ -27,8 +27,11 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     drawDebugSDF: _regl.DrawCommand;
     geoJSON: {};
     pointColor: number[];
+    pointRadius: number;
+    pointOpacity: number;
     strokeWidth: number;
     strokeColor: number[];
+    strokeOpacity: number;
     fontSize: number;
     fontColor: number[];
     fontOpacity: number;
@@ -37,6 +40,9 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     haloBlur: number;
     symbolAnchor: SymbolAnchor;
     textJustify: TextJustify;
+    textSpacing: number;
+    textOffsetX: number;
+    textOffsetY: number;
     debug: boolean;
     private tileIndex;
     private posMatrixCache;
@@ -49,7 +55,39 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     initDrawCircleCommand(): void;
     initDrawTextCommand(): void;
     initDrawDebugSDFCommand(): void;
+    /**
+     * 创建 Atlas
+     */
     initGlyphAtlas(): void;
+    /**
+     * 构建 Cluster 所需顶点数据
+     * @param clusters
+     */
+    buildClusterBuffers(clusters: IClusterFeature[]): {
+        packedBuffer: number[][];
+        packedBuffer2: number[][];
+        packedBuffer3: number[][];
+        indexBuffer: [number, number, number][];
+        textArray: {
+            text: string;
+            position: number[];
+        }[];
+    };
+    buildPointBuffers(clusters: IPointFeature[]): {
+        packedBuffer: number[][];
+        packedBuffer2: number[][];
+        packedBuffer3: number[][];
+        indexBuffer: [number, number, number][];
+    };
+    buildTextBuffers(textArray: {
+        text: string;
+        position: number[];
+    }[]): {
+        indexBuffer: [number, number, number][];
+        charPositionBuffer: number[][];
+        charUVBuffer: [number, number][];
+        charOffsetBuffer: [number, number][];
+    };
     renderClusters(clusters: IClusterFeature[], posMatrix: Float32Array, overscaledZ: number): void;
     renderPoints(clusters: IPointFeature[], posMatrix: Float32Array): void;
     renderTiles(): void;

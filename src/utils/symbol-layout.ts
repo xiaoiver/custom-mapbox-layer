@@ -80,6 +80,9 @@ function justifyLine(
   }
 }
 
+// justify right=1 left=0 center=0.5
+// horizontalAlign right=1 left=0 center=0.5
+// verticalAlign right=1 left=0 center=0.5
 function align(
   positionedGlyphs: Array<PositionedGlyph>,
   justify: number,

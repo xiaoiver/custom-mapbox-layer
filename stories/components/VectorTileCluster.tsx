@@ -27,7 +27,7 @@ export default class VectorLineLayer extends React.Component {
       <Map
         style="mapbox://styles/mapbox/light-v9"
         center={[-95.96471106679122, 28.604925848431535]}
-        zoom={[1]}
+        zoom={[0]}
         containerStyle={{
           height: "100vh",
           width: "100vw"
@@ -50,10 +50,19 @@ export default class VectorLineLayer extends React.Component {
             pointFolder.addColor(layer, 'pointColor').onChange(() => {
               layer.triggerRepaint();
             });
+            pointFolder.add(layer, 'pointRadius', 2, 20).onChange(() => {
+              layer.triggerRepaint();
+            });
+            pointFolder.add(layer, 'pointOpacity', 0, 1, 0.1).onChange(() => {
+              layer.triggerRepaint();
+            });
             pointFolder.addColor(layer, 'strokeColor').onChange(() => {
               layer.triggerRepaint();
             });
             pointFolder.add(layer, 'strokeWidth', 1, 10, 0.1).onChange(() => {
+              layer.triggerRepaint();
+            });
+            pointFolder.add(layer, 'strokeOpacity', 0, 1, 0.1).onChange(() => {
               layer.triggerRepaint();
             });
 
@@ -81,7 +90,16 @@ export default class VectorLineLayer extends React.Component {
             layoutFolder.add(layer, 'symbolAnchor', [ 'center', 'left', 'right', 'top', 'bottom', 'top-left', 'top-right', 'bottom-left', 'bottom-right' ]).onChange(() => {
               layer.triggerRepaint();
             });
-            layoutFolder.add(layer, 'textJustify', [ 'center', 'left', 'right' ]).onChange(() => {
+            // layoutFolder.add(layer, 'textJustify', [ 'center', 'left', 'right' ]).onChange(() => {
+            //   layer.triggerRepaint();
+            // });
+            layoutFolder.add(layer, 'textSpacing', 0, 10, 0.1).onChange(() => {
+              layer.triggerRepaint();
+            });
+            layoutFolder.add(layer, 'textOffsetX', -20, 20, 0.1).onChange(() => {
+              layer.triggerRepaint();
+            });
+            layoutFolder.add(layer, 'textOffsetY', -20, 20, 0.1).onChange(() => {
               layer.triggerRepaint();
             });
 

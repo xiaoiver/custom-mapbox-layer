@@ -1,5 +1,5 @@
 import * as Point from '@mapbox/point-geometry';
-import { Shaping } from 'utils/symbol-layout';
+import { Shaping } from '../utils/symbol-layout';
 import { GlyphPosition } from './GlyphAtlas';
 export declare type SymbolQuad = {
     tl: Point;

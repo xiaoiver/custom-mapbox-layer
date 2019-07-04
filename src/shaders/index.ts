@@ -24,13 +24,17 @@ import * as circleFS from './circle-fs.glsl';
 // @ts-ignore
 import * as circleVS from './circle-vs.glsl';
 // @ts-ignore
-import * as sdfFS from './sdf-fs.glsl';
+import * as sdfFS from './symbol-fs.glsl';
 // @ts-ignore
-import * as sdfVS from './sdf-vs.glsl';
+import * as sdfVS from './symbol-vs.glsl';
 // @ts-ignore
 import * as quadFS from './quad-fs.glsl';
 // @ts-ignore
 import * as quadVS from './quad-vs.glsl';
+// @ts-ignore
+import * as sdf2D from './sdf_2d.glsl';
+// @ts-ignore
+import * as decode from './decode.glsl';
 
 export function compileBuiltinModules() {
     registerModule('point1', { vs: point1VS, fs: point1FS });
@@ -41,6 +45,12 @@ export function compileBuiltinModules() {
     registerModule('line3d', { vs: line3DVS, fs: line3DFS });
     registerModule('line-vt', { vs: lineVTVS, fs: lineFS });
     registerModule('circle', { vs: circleVS, fs: circleFS });
+    // symbol
     registerModule('sdf', { vs: sdfVS, fs: sdfFS });
+    // sdf-2d functions
+    registerModule('sdf-2d', { vs: '', fs: sdf2D });
+    // vertex decompression
+    registerModule('decode', { vs: decode, fs: '' });
+    // debug quad for sdf atlas
     registerModule('quad', { vs: quadVS, fs: quadFS });
 };

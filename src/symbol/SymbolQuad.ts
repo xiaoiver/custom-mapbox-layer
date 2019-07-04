@@ -1,6 +1,6 @@
 // @ts-ignore
 import * as Point from '@mapbox/point-geometry';
-import { Shaping } from 'utils/symbol-layout';
+import { Shaping } from '../utils/symbol-layout';
 import { GlyphPosition } from './GlyphAtlas';
 
 const GLYPH_PBF_BORDER = 3;

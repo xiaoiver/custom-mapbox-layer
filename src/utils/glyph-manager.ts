@@ -13,7 +13,12 @@ const sdfGeneratorCache: {
   [fontStack: string]: TinySDF;
 } = {};
 
+export function isCJK(char: number): boolean {
+  return char >= 0x4E00 && char <= 0x9FFF;
+}
+
 export function generateSDF(fontStack: string = '', char: string): StyleGlyph {
+  const charCode = char.charCodeAt(0);
   let sdfGenerator = sdfGeneratorCache[fontStack];
   if (!sdfGenerator) {
     // 根据字体描述中包含的信息设置 fontWeight
@@ -31,7 +36,7 @@ export function generateSDF(fontStack: string = '', char: string): StyleGlyph {
   }
 
   return {
-    id: char.charCodeAt(0),
+    id: charCode,
     // 在 canvas 中绘制字符，使用 Uint8Array 存储 30*30 sdf 数据
     bitmap: new AlphaImage({ width: 30, height: 30 }, sdfGenerator.draw(char)),
     metrics: {
@@ -39,7 +44,8 @@ export function generateSDF(fontStack: string = '', char: string): StyleGlyph {
       height: 24,
       left: 0,
       top: -5,
-      advance: 24
+      // 对于 CJK 需要调整字符间距
+      advance: isCJK(charCode) ? 24 : 14
     }
   };
 }
