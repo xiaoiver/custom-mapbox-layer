@@ -8,7 +8,7 @@ import * as mat4 from 'gl-matrix/mat4';
 import * as mapboxgl from 'mapbox-gl';
 import * as _regl from 'regl';
 // @ts-ignore
-import Supercluster from 'supercluster';
+import geojsonvt from 'geojson-vt';
 // @ts-ignore
 import * as Point from '@mapbox/point-geometry';
 import MapboxAdapterLayer from './MapboxAdapterLayer';
@@ -23,8 +23,6 @@ import GlyphAtlas from '../symbol/GlyphAtlas';
 import { StyleGlyph } from '../symbol/AlphaImage';
 import { getGlyphQuads } from '../symbol/SymbolQuad';
 import { getLabelPlaneMatrix, getGlCoordMatrix, pixelsToTileUnits, tileSize } from '../utils/symbol-projection';
-import { packCircleVertex } from '../utils/vertex-compression';
-import { sdf2DFunctions } from '../utils/sdf-2d';
 import CollisionIndex from '../symbol/CollisionIndex';
 
 interface IVectorTileLineLayerOptions {
@@ -32,33 +30,23 @@ interface IVectorTileLineLayerOptions {
 }
 
 interface IClusterFeature {
-  geometry: [number, number][];
-  id: number;
-  tags: {
-    cluster: boolean;
-    cluster_id: number;
-    point_count: number;
-    point_count_abbreviated: number;
-  }
-}
-
-interface IPointFeature {
-  geometry: [number, number][];
-}
-
-interface IClusterText {
+  position: [number, number];
   text: string;
-  position: number[];
-  weight: number;
 }
+
+// interface IClusterText {
+//   text: string;
+//   position: number[];
+//   weight: number;
+// }
 
 const defaultFontStack = 'sans-serif';
-const compareClusterText = (t1: IClusterText, t2: IClusterText) => {
-  return t2.weight - t1.weight;
-}
+// const compareClusterText = (t1: IClusterText, t2: IClusterText) => {
+//   return t2.weight - t1.weight;
+// }
 
-export default class VectorTileClusterLayer extends MapboxAdapterLayer implements IVectorTileLineLayerOptions {
-  id = 'cluster';
+export default class TextLayer extends MapboxAdapterLayer implements IVectorTileLineLayerOptions {
+  id = 'text';
   renderingMode = '2d';
 
   drawCircles: _regl.DrawCommand;
@@ -69,13 +57,8 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
   public geoJSON = {};
 
   // style variables
-  public pointColor = [81, 187, 214];
-  public pointRadius = 10;
-  public pointOpacity = 1;
-  public strokeWidth = 2;
-  public strokeColor = [255, 255, 255];
-  public strokeOpacity = 1;
 
+  public textField = 'name';
   public fontSize = 14.;
   public fontColor = [0, 0, 0];
   public fontOpacity = 1.0;
@@ -116,48 +99,15 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
   }
 
   init(map: mapboxgl.Map, gl: WebGLRenderingContext) {
-    this.tileIndex = new Supercluster({
-      maxZoom: 17,
-      extent: EXTENT,
-      radius: 50 * EXTENT / 512,
+    this.tileIndex = geojsonvt(this.geoJSON, {
+      maxZoom: 24,
+      tolerance: 30,
+      extent: 8192
     });
-    this.tileIndex.load(this.geoJSON);
 
-    this.initDrawCircleCommand();
     this.initDrawTextCommand();
     this.initDrawDebugSDFCommand();
     this.initGlyphAtlas();
-  }
-
-  initDrawCircleCommand() {
-    const { vs, fs } = getModule('circle');
-    const reglDrawConfig: _regl.DrawConfig = {
-      frag: fs,
-      vert: vs,
-      attributes: {
-        // @ts-ignore
-        'a_packed_data': this.regl.prop('a_packed_data'),
-        // @ts-ignore
-        'a_packed_data2': this.regl.prop('a_packed_data2'),
-        // @ts-ignore
-        'a_packed_data3': this.regl.prop('a_packed_data3'),
-      },
-      uniforms: {
-        // @ts-ignore
-        'u_matrix': this.regl.prop('u_matrix'),
-        // @ts-ignore
-        'u_extrude_scale': this.map.transform.pixelsToGLUnits,
-      },
-      primitive: 'triangles',
-      // @ts-ignore
-      elements: this.regl.prop('elements'),
-      cull: {
-        enable: false,
-        face: 'back'
-      }
-    };
-
-    this.drawCircles = this.regl(reglDrawConfig);
   }
 
   initDrawTextCommand() {
@@ -232,7 +182,7 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
    * 创建 Atlas
    */
   initGlyphAtlas() {
-    const glyphMap = '0123456789包含个点'.split('').map(char => {
+    const glyphMap = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '.split('').map(char => {
       return generateSDF('', char);
     }).reduce((prev, cur) => {
       // @ts-ignore
@@ -251,119 +201,7 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     this.glyphAtlasTexture = this.regl.texture();
   }
 
-  /**
-   * 构建 Cluster 所需顶点数据
-   * @param clusters
-   */
-  buildClusterBuffers(clusters: IClusterFeature[]) {
-    const packedBuffer: number[][] = [];
-    const packedBuffer2: number[][] = [];
-    const packedBuffer3: number[][] = [];
-    const textArray: IClusterText[] = [];
-    const indexBuffer: [number, number, number][] = [];
-
-    let i = 0;
-    clusters.forEach(cluster => {
-      const [ tileX, tileY ] = cluster.geometry[0];
-      const pointCount = cluster.tags.point_count;
-
-      // 映射聚合点数目到 cluster 半径和颜色
-      let radius: number;
-      let color: [number, number, number, number];
-      if (pointCount > 30) {
-        radius = 40;
-        color = [242, 140, 177, 255];
-      } else if (pointCount > 10) {
-        radius = 30;
-        color = [241, 240, 117, 255];
-      } else {
-        radius = 20;
-        color = [81, 187, 214, 255];
-      }
-
-      // 压缩顶点数据
-      const {
-        packedBuffer: packed1,
-        packedBuffer2: packed2,
-        packedBuffer3: packed3
-      } = packCircleVertex({
-        color, radius, tileX, tileY,
-        shape: 'circle',
-        opacity: 1,
-        strokeColor: [255, 255, 255, 255],
-        strokeOpacity: 0,
-        strokeWidth: 0,
-      })
-      packedBuffer.push(...packed1);
-      packedBuffer2.push(...packed2);
-      packedBuffer3.push(...packed3);
-
-      // 构造 index
-      indexBuffer.push([0 + i, 1 + i, 2 + i]);
-      indexBuffer.push([2 + i, 3 + i, 0 + i]);
-      i += 4;
-
-      // 为每个 cluster 构造字符数据
-      textArray.push({
-        text: `包含${pointCount}个点`,
-        position: cluster.geometry[0],
-        weight: pointCount
-      });
-    });
-
-    return {
-      packedBuffer,
-      packedBuffer2,
-      packedBuffer3,
-      indexBuffer,
-      textArray,
-    }
-  }
-
-  buildPointBuffers(clusters: IPointFeature[]) {
-    const packedBuffer: number[][] = [];
-    const packedBuffer2: number[][] = [];
-    const packedBuffer3: number[][] = [];
-    const indexBuffer: [number, number, number][] = [];
-
-    let i = 0;    
-    clusters.forEach((cluster, index) => {
-      const [ tileX, tileY ] = cluster.geometry[0];
-
-      // 压缩顶点数据
-      const {
-        packedBuffer: packed1,
-        packedBuffer2: packed2,
-        packedBuffer3: packed3
-      } = packCircleVertex({
-        color: [...this.pointColor, 255],
-        radius: this.pointRadius,
-        tileX, tileY,
-        shape: sdf2DFunctions[index % sdf2DFunctions.length],
-        opacity: this.pointOpacity,
-        strokeColor: [...this.strokeColor, 255],
-        strokeOpacity: this.strokeOpacity,
-        strokeWidth: this.strokeWidth,
-      })
-      packedBuffer.push(...packed1);
-      packedBuffer2.push(...packed2);
-      packedBuffer3.push(...packed3);
-
-      // 构造 index
-      indexBuffer.push([0 + i, 1 + i, 2 + i]);
-      indexBuffer.push([2 + i, 3 + i, 0 + i]);
-      i += 4;
-    });
-
-    return {
-      packedBuffer,
-      packedBuffer2,
-      packedBuffer3,
-      indexBuffer,
-    }
-  }
-
-  buildTextBuffers(textArray: {text: string; position: number[]}[], posMatrix: mat4) {
+  buildTextBuffers(textArray: IClusterFeature[], posMatrix: mat4) {
     const charPositionBuffer: number[][] = [];
     const charUVBuffer: [number, number][] = [];
     const charOffsetBuffer: [number, number][] = [];
@@ -374,7 +212,7 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     const fontScale = this.fontSize / 24;
 
     // 首先按权重从高到低排序
-    textArray.sort(compareClusterText);
+    // textArray.sort(compareClusterText);
 
     let i = 0;
     textArray.forEach(({ text, position }) => {
@@ -436,7 +274,7 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     };
   }
 
-  renderClusters(clusters: IClusterFeature[], posMatrix: Float32Array, overscaledZ: number) {
+  renderText(clusters: IClusterFeature[], posMatrix: Float32Array, overscaledZ: number) {
     const { width, height, data } = this.glyphAtlas.image;
     // @ts-ignore
     const s = pixelsToTileUnits(overscaledZ, 1, this.map.transform.zoom);
@@ -445,33 +283,8 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     // @ts-ignore
     const glCoordMatrix = getGlCoordMatrix(posMatrix, false, false, this.map.transform, s);
 
-    // draw clusters
-    const { packedBuffer, packedBuffer2, packedBuffer3, indexBuffer: circleIndexes, textArray } = this.buildClusterBuffers(clusters);
-    this.drawCircles({
-      'u_matrix': posMatrix,
-      'a_packed_data': {
-        buffer: this.regl.buffer({
-          usage: 'dynamic',
-          data: packedBuffer
-        }),
-      },
-      'a_packed_data2': {
-        buffer: this.regl.buffer({
-          usage: 'dynamic',
-          data: packedBuffer2
-        }),
-      },
-      'a_packed_data3': {
-        buffer: this.regl.buffer({
-          usage: 'dynamic',
-          data: packedBuffer3
-        }),
-      },
-      'elements': circleIndexes
-    });
-
     // draw text
-    const { indexBuffer: textIndexes, charOffsetBuffer, charPositionBuffer, charUVBuffer } = this.buildTextBuffers(textArray, posMatrix);
+    const { indexBuffer: textIndexes, charOffsetBuffer, charPositionBuffer, charUVBuffer } = this.buildTextBuffers(clusters, posMatrix);
     this.drawText({
       'u_matrix': posMatrix,
       'u_label_matrix': labelPlaneMatrix,
@@ -498,33 +311,6 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     });
   }
 
-  renderPoints(clusters: IPointFeature[], posMatrix: Float32Array) {
-    const { packedBuffer, packedBuffer2, packedBuffer3, indexBuffer } = this.buildPointBuffers(clusters);
-
-    this.drawCircles({
-      'u_matrix': posMatrix,
-      'a_packed_data': {
-        buffer: this.regl.buffer({
-          usage: 'dynamic',
-          data: packedBuffer
-        }),
-      },
-      'a_packed_data2': {
-        buffer: this.regl.buffer({
-          usage: 'dynamic',
-          data: packedBuffer2
-        }),
-      },
-      'a_packed_data3': {
-        buffer: this.regl.buffer({
-          usage: 'dynamic',
-          data: packedBuffer3
-        }),
-      },
-      'elements': indexBuffer
-    });
-  }
-
   renderTiles() {
     this.cleanPosMatrixCache();
     const currentZoomLevel = this.map.getZoom();
@@ -546,10 +332,14 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
       // retrieve target tile
       const t = this.tileIndex.getTile(tile.canonical.z, tile.canonical.x, tile.canonical.y);
       if (t && t.features && t.features.length) {
-        const clusters = t.features.filter((f: IClusterFeature) => f.id);
-        const singlePoints = t.features.filter((f: IClusterFeature) => !f.id);
-        this.renderPoints(singlePoints, tile.posMatrix);
-        this.renderClusters(clusters, tile.posMatrix, tile.overscaledZ);
+        const points: IClusterFeature[] = [];
+        t.features.forEach((feature: any) => {
+          points.push({
+            position: feature.geometry[0],
+            text: feature.tags[this.textField],
+          });
+        });
+        this.renderText(points, tile.posMatrix, tile.overscaledZ);
       }
     });
   }

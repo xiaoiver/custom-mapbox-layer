@@ -17,6 +17,46 @@ export function isCJK(char: number): boolean {
   return char >= 0x4E00 && char <= 0x9FFF;
 }
 
+export function isUpperCase(char: number): boolean {
+  return char >= 'A'.charCodeAt(0) && char <= 'Z'.charCodeAt(0);
+}
+
+const fontAdvanceMap = {
+  I: 6,
+  J: 14,
+  L: 14,
+  M: 22,
+  T: 14,
+  W: 22,
+  Y: 14,
+  m: 20,
+  w: 20,
+  i: 6,
+  l: 6,
+  r: 10,
+  t: 10,
+  ' ': 6,
+};
+
+// TODO: 如何获取 font metrics？
+// @see https://stackoverflow.com/questions/46126565/how-to-get-font-glyphs-metrics-details-in-javascript
+function getCharAdvance(char: number): number {
+  if (isCJK(char)) {
+    return 24;
+  }
+
+  const string = String.fromCharCode(char);
+  if (fontAdvanceMap[string]) {
+    return fontAdvanceMap[string];
+  }
+
+  if (isUpperCase(char)) {
+    return 18;
+  }
+
+  return 14;
+}
+
 export function generateSDF(fontStack: string = '', char: string): StyleGlyph {
   const charCode = char.charCodeAt(0);
   let sdfGenerator = sdfGeneratorCache[fontStack];
@@ -45,7 +85,7 @@ export function generateSDF(fontStack: string = '', char: string): StyleGlyph {
       left: 0,
       top: -5,
       // 对于 CJK 需要调整字符间距
-      advance: isCJK(charCode) ? 24 : 14
+      advance: getCharAdvance(charCode)
     }
   };
 }

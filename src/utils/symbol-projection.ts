@@ -1,7 +1,7 @@
-import { mat4 } from 'gl-matrix';
+import { mat4, vec4 } from 'gl-matrix';
 import { EXTENT } from '../source/tile_id';
 
-const tileSize = 512;
+export const tileSize = 512;
 /**
  * Converts a pixel value at a the given zoom level to tile units.
  */
@@ -54,4 +54,14 @@ export function getGlCoordMatrix(
     mat4.scale(m, m, [2 / transform.width, 2 / transform.height, 1]);
   }
   return m;
+}
+
+// For line label layout, we're not using z output and our w input is always 1
+// This custom matrix transformation ignores those components to make projection faster
+export function xyTransformMat4(out: vec4, a: vec4, m: mat4) {
+  const x = a[0], y = a[1];
+  out[0] = m[0] * x + m[4] * y + m[12];
+  out[1] = m[1] * x + m[5] * y + m[13];
+  out[3] = m[3] * x + m[7] * y + m[15];
+  return out;
 }

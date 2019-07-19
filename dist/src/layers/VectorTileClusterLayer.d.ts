@@ -1,3 +1,9 @@
+/**
+ * draw cluster with tiles
+ * @see https://blog.mapbox.com/a-dive-into-spatial-search-algorithms-ebd0c5e39d2a
+ * @see https://zhuanlan.zhihu.com/p/64450167/
+ */
+import * as mat4 from 'gl-matrix/mat4';
 import * as mapboxgl from 'mapbox-gl';
 import * as _regl from 'regl';
 import MapboxAdapterLayer from './MapboxAdapterLayer';
@@ -18,6 +24,11 @@ interface IClusterFeature {
 }
 interface IPointFeature {
     geometry: [number, number][];
+}
+interface IClusterText {
+    text: string;
+    position: number[];
+    weight: number;
 }
 export default class VectorTileClusterLayer extends MapboxAdapterLayer implements IVectorTileLineLayerOptions {
     id: string;
@@ -49,6 +60,7 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     private glyphAtlas;
     private glyphMap;
     private glyphAtlasTexture;
+    private collisionIndex;
     constructor(options: Partial<IVectorTileLineLayerOptions>);
     getReglInitializationOptions(): Partial<_regl.InitializationOptions>;
     init(map: mapboxgl.Map, gl: WebGLRenderingContext): void;
@@ -68,10 +80,7 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
         packedBuffer2: number[][];
         packedBuffer3: number[][];
         indexBuffer: [number, number, number][];
-        textArray: {
-            text: string;
-            position: number[];
-        }[];
+        textArray: IClusterText[];
     };
     buildPointBuffers(clusters: IPointFeature[]): {
         packedBuffer: number[][];
@@ -82,7 +91,7 @@ export default class VectorTileClusterLayer extends MapboxAdapterLayer implement
     buildTextBuffers(textArray: {
         text: string;
         position: number[];
-    }[]): {
+    }[], posMatrix: mat4): {
         indexBuffer: [number, number, number][];
         charPositionBuffer: number[][];
         charUVBuffer: [number, number][];
