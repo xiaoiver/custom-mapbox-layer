@@ -14,6 +14,7 @@ ctx.addEventListener('message', async ({ data: payload }) => {
       try {
         tileIndex = await loadData(params);
         ctx.postMessage({
+          command: 'tileIndexLoaded',
           status: 'success'
         });
       } catch (e) {

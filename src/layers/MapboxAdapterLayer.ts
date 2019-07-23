@@ -20,6 +20,7 @@ export default abstract class MapboxAdapterLayer implements mapboxgl.Layer {
     protected abstract getReglInitializationOptions(): Partial<_regl.InitializationOptions>;
     protected abstract init(map: mapboxgl.Map, gl: WebGLRenderingContext): void;
     protected abstract frame(gl: WebGLRenderingContext, matrix: any): void;
+    // protected abstract beforeRender(gl: WebGLRenderingContext, matrix: any): void;
 
     private initStats() {
         this.stats = new Stats();
@@ -62,5 +63,13 @@ export default abstract class MapboxAdapterLayer implements mapboxgl.Layer {
             this.stats.update();
         }
         this.frame(gl, matrix);
+    }
+
+    prerender(gl: WebGLRenderingContext, matrix: Array<number>) {
+        // @ts-ignore
+        if (this.beforeRender) {
+            // @ts-ignore
+            this.beforeRender(gl, matrix);
+        }
     }
 }

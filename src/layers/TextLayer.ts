@@ -8,15 +8,10 @@ import * as mat4 from 'gl-matrix/mat4';
 import * as mapboxgl from 'mapbox-gl';
 import * as _regl from 'regl';
 // @ts-ignore
-import geojsonvt from 'geojson-vt';
-// @ts-ignore
 import * as Point from '@mapbox/point-geometry';
 import MapboxAdapterLayer from './MapboxAdapterLayer';
 import { getModule } from '../utils/shader-module';
-import { zoomToScale, TILE_SIZE } from '../utils/web-mercator';
-import tileCover from '../utils/tile-cover';
-import MercatorCoordinate from '../geo/mercator_coordinate';
-import { UnwrappedTileID, EXTENT } from '../source/tile_id';
+import { EXTENT } from '../source/tile_id';
 import { generateSDF, getDefaultCharacterSet } from '../utils/glyph-manager';
 import { shapeText, SymbolAnchor, TextJustify } from '../utils/symbol-layout';
 import GlyphAtlas from '../symbol/GlyphAtlas';
@@ -24,15 +19,16 @@ import { StyleGlyph } from '../symbol/AlphaImage';
 import { getGlyphQuads } from '../symbol/SymbolQuad';
 import { getLabelPlaneMatrix, getGlCoordMatrix, pixelsToTileUnits, tileSize } from '../utils/symbol-projection';
 import CollisionIndex from '../symbol/CollisionIndex';
-import classifyRings from '../utils/classify-rings';
+
 // @ts-ignore
-import findPoleOfInaccessibility from '../utils/find_pole_of_inaccessibility';
+import * as Worker from 'worker-loader!../worker/worker';
+import { DrawableTile } from '../d.ts';
 
 interface IVectorTileLineLayerOptions {
   geoJSON: any;
 }
 
-interface ITextFeature {
+export interface ITextFeature {
   position: [number, number];
   text: string;
 }
@@ -51,6 +47,7 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
 
   // @ts-ignore
   public geoJSON = {};
+  public url = '';
 
   // style variables
 
@@ -72,14 +69,15 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
 
   public debug: boolean = false;
 
-  private tileIndex: any;
-  private posMatrixCache: { [key: string]: Float32Array } = {};
   private glyphAtlas: GlyphAtlas;
   private glyphMap: { [key: number]: StyleGlyph };
   private glyphAtlasTexture: any;
   private fontStack: string;
 
   private collisionIndex: CollisionIndex;
+  private worker: Worker;
+  private tileIndexLoaded: boolean = false;
+  private tilesToRender: DrawableTile[] = [];
 
   constructor(options: Partial<IVectorTileLineLayerOptions>) {
     super();
@@ -98,15 +96,44 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
   }
 
   init(map: mapboxgl.Map, gl: WebGLRenderingContext) {
-    this.tileIndex = geojsonvt(this.geoJSON, {
-      maxZoom: 24,
-      tolerance: 30,
-      extent: 8192
-    });
-
     this.initDrawTextCommand();
     this.initDrawDebugSDFCommand();
     this.initGlyphAtlas();
+    this.initWorker();
+  }
+
+  initWorker() {
+    // create a webworker
+    this.worker = new Worker();
+    this.worker.addEventListener('message', this.handleWorkerMessage);
+    // request data & construct tile index
+    this.worker.postMessage({
+      command: 'loadData',
+      params: {
+        url: this.url,
+        type: 'geojson',
+        isCluster: false
+      }
+    });
+  }
+  // @ts-ignore
+  handleWorkerMessage = ({ data }) => {
+    const { command, params, status } = data;
+    if (status === 'failure') {
+      console.error(params);
+      return;
+    }
+    switch (command) {
+      case 'tileIndexLoaded': {
+        this.tileIndexLoaded = true;
+        break;
+      }
+      case 'renderTiles': {
+        const { tiles } = params;
+        this.tilesToRender = tiles;
+        break;
+      }
+    }
   }
 
   initDrawTextCommand() {
@@ -313,60 +340,39 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
   }
 
   renderTiles() {
-    this.cleanPosMatrixCache();
-    const currentZoomLevel = this.map.getZoom();
-    const currentScale = zoomToScale(currentZoomLevel);
-    const flooredZoom = Math.floor(currentZoomLevel);
+    this.tilesToRender.forEach(tile => {
+      const { textFeatures, posMatrix, overscaledZ } = tile;
+      if (textFeatures && textFeatures.length) {
+        this.renderText(textFeatures, posMatrix, overscaledZ);
+      }
+    });
+  }
 
+  beforeRender() {
     const bounds = this.map.getBounds();
-    const tiles = tileCover(flooredZoom, [
-      MercatorCoordinate.fromLngLat(bounds.getSouthWest()),
-      MercatorCoordinate.fromLngLat(bounds.getNorthEast()),
-      MercatorCoordinate.fromLngLat(bounds.getNorthWest()),
-      MercatorCoordinate.fromLngLat(bounds.getSouthEast())
-    ], flooredZoom, false);
-
-    tiles.forEach(tile => {
-      // calculate matrix in tile coords
-      tile.posMatrix = this.calculatePosMatrix(tile.toUnwrapped(), currentScale);
-
-      // retrieve target tile
-      const t = this.tileIndex.getTile(tile.canonical.z, tile.canonical.x, tile.canonical.y);
-      if (t && t.features && t.features.length) {
-        const textFeatures: ITextFeature[] = [];
-        t.features.forEach((feature: any) => {
-          // Point 要素，锚点无需计算
-          if (feature.type === 1) {
-            textFeatures.push({
-              position: feature.geometry[0],
-              text: feature.tags[this.textField],
-            });
-          }
-          // Polygon 要素
-          if (feature.type === 3) {
-            const rings = feature.geometry.map((ring: number[][]) => {
-              return ring.map((p: number[]) => new Point(p[0], p[1]));
-            });
-            for (const polygon of classifyRings(rings, 0)) {
-              // 计算多边形的难抵极
-              // const poi = findPoleOfInaccessibility(polygon, 16);
-              // textFeatures.push({
-              //   position: [poi.x, poi.y],
-              //   text: feature.tags[this.textField],
-              // });
-              textFeatures.push({
-                position: [polygon[0][0].x, polygon[0][0].y],
-                text: feature.tags[this.textField],
-              });
-            }
-          }
-        });
-        this.renderText(textFeatures, tile.posMatrix, tile.overscaledZ);
+    this.worker.postMessage({
+      command: 'getTiles',
+      params: {
+        layer: 'text',
+        textField: this.textField,
+        bounds: [
+          bounds.getSouthWest(),
+          bounds.getNorthEast(),
+          bounds.getNorthWest(),
+          bounds.getSouthEast()
+        ],
+        zoom: this.map.getZoom(),
+        // @ts-ignore
+        projMatrix: this.map.transform.projMatrix
       }
     });
   }
 
   frame(gl: WebGLRenderingContext, m: Array<number>) {
+    if (!this.tileIndexLoaded) {
+      return;
+    }
+    
     // 每次相机更新，需要重新创建碰撞索引
     // @ts-ignore
     this.collisionIndex = new CollisionIndex(this.map.transform);
@@ -390,28 +396,8 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
     }
   }
 
-  calculatePosMatrix(unwrappedTileID: UnwrappedTileID, currentScale: number): Float32Array {
-    const posMatrixKey = unwrappedTileID.key;
-    const cache = this.posMatrixCache;
-    if (cache[posMatrixKey]) {
-      return cache[posMatrixKey];
-    }
-
-    const canonical = unwrappedTileID.canonical;
-    const scale = TILE_SIZE * currentScale / zoomToScale(canonical.z);
-    const unwrappedX = canonical.x + Math.pow(2, canonical.z) * unwrappedTileID.wrap;
-
-    const posMatrix = mat4.identity(new Float64Array(16));
-    mat4.translate(posMatrix, posMatrix, [unwrappedX * scale, canonical.y * scale, 0]);
-    mat4.scale(posMatrix, posMatrix, [scale / EXTENT, scale / EXTENT, 1]);
-    // @ts-ignore
-    mat4.multiply(posMatrix, this.map.transform.projMatrix, posMatrix);
-
-    cache[posMatrixKey] = new Float32Array(posMatrix);
-    return cache[posMatrixKey];
-  }
-
-  cleanPosMatrixCache() {
-    this.posMatrixCache = {};
-  }
+  // cleanPosMatrixCache() {
+  //   this.posMatrixCache = {};
+  //   // this.textFeatureCache = {};
+  // }
 }

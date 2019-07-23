@@ -38,7 +38,7 @@ export default class VectorLineLayer extends React.Component {
             const geoJSON = await response.json();
             const layer = new TextLayer({
               // @ts-ignore
-              geoJSON,
+              url: 'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_10m_geography_regions_points.geojson',
             });
             const circleLayer = new CircleLayer({
               // @ts-ignore

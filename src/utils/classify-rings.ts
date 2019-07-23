@@ -23,7 +23,6 @@ export function calculateSignedArea(ring: Array<Point>): number {
 
 // classifies an array of rings into polygons with outer rings and holes
 export default function classifyRings(rings: Point[][], maxRings: number) {
-  debugger;
   const len = rings.length;
 
   if (len <= 1) return [rings];

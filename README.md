@@ -20,6 +20,10 @@ npm run storybook
 
 ## Features
 
+### 文本标注
+
+![Polygon 要素标注](./static/text-polygon.png)
+
 ### 数据瓦片 + Cluster
 
 [ClusterLayer](https://xiaoiver.github.io/custom-mapbox-layer/?path=/story/vectorlayer--cluster)

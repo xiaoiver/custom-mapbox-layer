@@ -35,11 +35,16 @@ export default class VectorLineLayer extends React.Component {
         }}
         onStyleLoad={async (map) => {
           if (map) {
-            const response = await fetch('https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_50m_geography_marine_polys.geojson');
-            const geoJSON = await response.json();
+            map.addSource('test source', {
+              type: 'geojson',
+              data: 'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_50m_geography_marine_polys.geojson'
+            });
+
             const layer = new TextLayer({
               // @ts-ignore
-              geoJSON,
+              url: 'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_50m_geography_marine_polys.geojson',
+              // @ts-ignore
+              haloWidth: 2,
             });
 
             const gui = new dat.GUI();
@@ -110,9 +115,26 @@ export default class VectorLineLayer extends React.Component {
                   break;
                 }
               }
-              
+
+              map.addLayer({
+                'id': 'maine',
+                'type': 'fill',
+                'source': 'test source',
+                'paint': {
+                  'fill-color': [
+                    "interpolate",
+                    ["linear"],
+                    ["get", "scalerank"],
+                    0,
+                    ["to-color", "#abb7ef"],
+                    10,
+                    ["to-color", "#3a57e0"]
+                  ],
+                  'fill-opacity': 1.0
+                }
+              });
               // @ts-ignore
-              map.addLayer(layer, labelLayerId);
+              map.addLayer(layer);
             }
           }
         }}>

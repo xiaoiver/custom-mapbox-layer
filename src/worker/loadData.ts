@@ -18,6 +18,7 @@ export default async function loadData({ url, type, isCluster }: LoadDataMessage
         extent: 8192
       });
     }
+    // TODO: use @mapbox/supercluster
   } else if (type === 'csv') {
     // const data = await ret.text();
   }

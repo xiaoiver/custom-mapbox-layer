@@ -2,35 +2,14 @@
 import * as mat4 from 'gl-matrix/mat4';
 import tileCover from '../utils/tile-cover';
 import { zoomToScale, TILE_SIZE } from '../utils/web-mercator';
-import { UnwrappedTileID, EXTENT, OverscaledTileID } from '../source/tile_id';
-import getNormals from '../utils/polyline-normals';
+import { UnwrappedTileID, EXTENT } from '../source/tile_id';
+// import getNormals from '../utils/polyline-normals';
 import MercatorCoordinate from '../geo/mercator_coordinate';
+// @ts-ignore
+import * as Point from '@mapbox/point-geometry';
 
-interface GetTilesMessage {
-  zoom: number;
-  bounds: [number, number][];
-  projMatrix: Float32Array;
-}
-
-interface TileStats {
-  tileID: number;
-  pointsNum: number;
-}
-
-export interface DrawableTile extends OverscaledTileID {
-  attributes: {
-    position: number[][];
-    miter: number[];
-    normal: number[][];
-    counters: number[];
-    indices: number[][];
-  }
-}
-
-export interface TilesFromWorker {
-  stats: TileStats[];
-  tiles: DrawableTile[];
-}
+import { DrawableTile, GetTilesMessage, TilesFromWorker, LayerType } from '../d.ts';
+import calcTextFeatures from './feature/text';
 
 let posMatrixCache: { [key: string]: Float32Array } = {};
 
@@ -59,12 +38,11 @@ function cleanPosMatrixCache() {
   posMatrixCache = {};
 }
 
-export default function getTiles(tileIndex: any, { zoom, bounds, projMatrix }: GetTilesMessage): TilesFromWorker {
+export default function getTiles(tileIndex: any, { layer, textField, zoom, bounds, projMatrix }: GetTilesMessage): TilesFromWorker {
   cleanPosMatrixCache();
   const currentScale = zoomToScale(zoom);
   const flooredZoom = Math.floor(zoom);
 
-  const stats: TileStats[] = [];
   const tiles = <DrawableTile[]>tileCover(flooredZoom, [
     MercatorCoordinate.fromLngLat(bounds[0]),
     MercatorCoordinate.fromLngLat(bounds[1]),
@@ -73,57 +51,20 @@ export default function getTiles(tileIndex: any, { zoom, bounds, projMatrix }: G
   ], flooredZoom, false);
 
   tiles.forEach(tile => {
-    // for stats
-    let simplifiedNum = 0;
-
     // calculate matrix in tile coords
     tile.posMatrix = calculatePosMatrix(tile.toUnwrapped(), currentScale, projMatrix);
 
     // retrieve target tile
     const t = tileIndex.getTile(tile.canonical.z, tile.canonical.x, tile.canonical.y);
     if (t && t.features && t.features.length) {
-      const attrNormal: Array<Array<number>> = [];
-      const attrMiter: Array<number> = [];
-      let attrIndex: Array<Array<number>> = [];
-      let attrPos: Array<Array<number>> = [];
-      let attrCounters: Array<number> = [];
-      let indexOffset = 0;
-
-      // for stats
-      simplifiedNum += t.numSimplified;
-
+      tile.textFeatures = [];
       t.features.forEach((feature: any) => {
-        feature.geometry.forEach((points: number[][]) => {
-          const { normals, attrIndex: aIndex, attrPos: aPos, attrCounters: aCounters } = getNormals(points, false, indexOffset);
-          attrIndex = attrIndex.concat(aIndex);
-          attrPos = attrPos.concat(aPos);
-          attrCounters = attrCounters.concat(aCounters);
-          indexOffset += aPos.length;
-
-          normals.forEach((n: Array<Array<number>>) => {
-            var norm = n[0];
-            var miter = n[1];
-            attrNormal.push([norm[0], norm[1]]);
-            // @ts-ignore
-            attrMiter.push(miter);
-          });
-        });
+        if (layer === LayerType.TEXT) {
+          calcTextFeatures(tile, feature, textField);
+        }
       });
-
-      tile.attributes = {
-        position: attrPos,
-        miter: attrMiter,
-        normal: attrNormal,
-        counters: attrCounters,
-        indices: attrIndex
-      };
     }
-
-    stats.push({
-      tileID: tile.key,
-      pointsNum: simplifiedNum
-    });
   });
 
-  return { tiles, stats };
+  return { tiles };
 }

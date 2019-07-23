@@ -28,4 +28,5 @@ export default abstract class MapboxAdapterLayer implements mapboxgl.Layer {
      * @param matrix
      */
     render(gl: WebGLRenderingContext, matrix: Array<number>): void;
+    prerender(gl: WebGLRenderingContext, matrix: Array<number>): void;
 }
