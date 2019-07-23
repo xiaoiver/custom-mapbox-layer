@@ -7,72 +7,63 @@ const buffer = 3;    // Whitespace buffer around a glyph in pixels
 const radius = 8;    // How many pixels around the glyph shape to use for encoding distance
 const cutoff = 0.25  // How much of the radius (relative) is used for the inside part the glyph
 
-const fontFamily = 'sans-serif'; // css font-family
-
 const sdfGeneratorCache: {
   [fontStack: string]: TinySDF;
+} = {};
+const textMetricsCache: {
+  [fontStack: string]: {
+    [char: string]: number;
+  }
 } = {};
 
 export function isCJK(char: number): boolean {
   return char >= 0x4E00 && char <= 0x9FFF;
 }
 
-export function isUpperCase(char: number): boolean {
-  return char >= 'A'.charCodeAt(0) && char <= 'Z'.charCodeAt(0);
+export function getDefaultCharacterSet(): string[] {
+  const charSet = [];
+  for (let i = 32; i < 128; i++) {
+    charSet.push(String.fromCharCode(i));
+  }
+  return charSet;
 }
 
-const fontAdvanceMap = {
-  I: 6,
-  J: 14,
-  L: 14,
-  M: 22,
-  T: 14,
-  W: 22,
-  Y: 14,
-  m: 20,
-  w: 20,
-  i: 6,
-  l: 6,
-  r: 10,
-  t: 10,
-  ' ': 6,
-};
-
-// TODO: 如何获取 font metrics？
-// @see https://stackoverflow.com/questions/46126565/how-to-get-font-glyphs-metrics-details-in-javascript
-function getCharAdvance(char: number): number {
-  if (isCJK(char)) {
-    return 24;
+function extractFontStack(fontStack: string) {
+  const fontFamily = fontStack.trim().substring(0, fontStack.lastIndexOf(' '));
+  let fontWeight = '400';
+  if (/bold/i.test(fontStack)) {
+    fontWeight = '900';
+  } else if (/medium/i.test(fontStack)) {
+    fontWeight = '500';
+  } else if (/light/i.test(fontStack)) {
+    fontWeight = '200';
   }
 
-  const string = String.fromCharCode(char);
-  if (fontAdvanceMap[string]) {
-    return fontAdvanceMap[string];
-  }
-
-  if (isUpperCase(char)) {
-    return 18;
-  }
-
-  return 14;
+  return {
+    fontFamily,
+    fontWeight,
+  };
 }
 
 export function generateSDF(fontStack: string = '', char: string): StyleGlyph {
+  const { fontFamily, fontWeight } = extractFontStack(fontStack);
+  
   const charCode = char.charCodeAt(0);
   let sdfGenerator = sdfGeneratorCache[fontStack];
   if (!sdfGenerator) {
-    // 根据字体描述中包含的信息设置 fontWeight
-    let fontWeight = '400';
-    if (/bold/i.test(fontStack)) {
-      fontWeight = '900';
-    } else if (/medium/i.test(fontStack)) {
-      fontWeight = '500';
-    } else if (/light/i.test(fontStack)) {
-      fontWeight = '200';
-    }
     // 创建 SDF
     sdfGenerator = sdfGeneratorCache[fontStack]
       = new TinySDF(fontsize, buffer, radius, cutoff, fontFamily, fontWeight);
+  }
+
+  if (!textMetricsCache[fontStack]) {
+    textMetricsCache[fontStack] = {};
+  }
+
+  if (!textMetricsCache[fontStack][char]) {
+    // 使用 mapbox/tiny-sdf 中的 context
+    // @see https://stackoverflow.com/questions/46126565/how-to-get-font-glyphs-metrics-details-in-javascript
+    textMetricsCache[fontStack][char] = sdfGenerator.ctx.measureText(char).width;
   }
 
   return {
@@ -85,7 +76,8 @@ export function generateSDF(fontStack: string = '', char: string): StyleGlyph {
       left: 0,
       top: -5,
       // 对于 CJK 需要调整字符间距
-      advance: getCharAdvance(charCode)
+      // advance: getCharAdvance(charCode)
+      advance: isCJK(charCode) ? 24 : textMetricsCache[fontStack][char]
     }
   };
 }

@@ -10,6 +10,8 @@
 * [解决高缩放等级下的抖动问题](https://zhuanlan.zhihu.com/p/57469121)
 * [使用数据瓦片展示海量数据](https://zhuanlan.zhihu.com/p/64130041)
 * [使用 k-d tree 实现点聚合图](https://zhuanlan.zhihu.com/p/64450167)
+* [在动态地图中实现文本标注（一）](https://zhuanlan.zhihu.com/p/72222549)
+* [在动态地图中实现文本标注（二）](https://zhuanlan.zhihu.com/p/74373214)
 
 使用 storybook 展示例子
 ```bash

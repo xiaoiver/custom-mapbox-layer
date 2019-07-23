@@ -1,7 +1,8 @@
 import * as React from 'react';
 import ReactMapboxGl from "react-mapbox-gl";
 import * as dat from 'dat.gui';
-import { TextLayer, CircleLayer } from '../../src';
+import { TextLayer } from '../../src';
+// import { featureEach } from '@turf/meta';
 
 const Map = ReactMapboxGl({
   accessToken: 'pk.eyJ1IjoieGlhb2l2ZXIiLCJhIjoiY2pxcmc5OGNkMDY3cjQzbG42cXk5NTl3YiJ9.hUC5Chlqzzh0FFd_aEc-uQ'
@@ -34,17 +35,12 @@ export default class VectorLineLayer extends React.Component {
         }}
         onStyleLoad={async (map) => {
           if (map) {
-            const response = await fetch('https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_10m_geography_regions_points.geojson');
+            const response = await fetch('https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_50m_geography_marine_polys.geojson');
             const geoJSON = await response.json();
             const layer = new TextLayer({
               // @ts-ignore
               geoJSON,
             });
-            const circleLayer = new CircleLayer({
-              // @ts-ignore
-              geoJSON,
-            });
-            circleLayer.pointRadius = 4;
 
             const gui = new dat.GUI();
             this.gui = gui;
@@ -114,9 +110,6 @@ export default class VectorLineLayer extends React.Component {
                   break;
                 }
               }
-
-              // @ts-ignore
-              map.addLayer(circleLayer, labelLayerId);
               
               // @ts-ignore
               map.addLayer(layer, labelLayerId);

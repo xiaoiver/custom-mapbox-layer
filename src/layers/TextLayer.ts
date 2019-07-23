@@ -17,30 +17,26 @@ import { zoomToScale, TILE_SIZE } from '../utils/web-mercator';
 import tileCover from '../utils/tile-cover';
 import MercatorCoordinate from '../geo/mercator_coordinate';
 import { UnwrappedTileID, EXTENT } from '../source/tile_id';
-import { generateSDF } from '../utils/glyph-manager';
+import { generateSDF, getDefaultCharacterSet } from '../utils/glyph-manager';
 import { shapeText, SymbolAnchor, TextJustify } from '../utils/symbol-layout';
 import GlyphAtlas from '../symbol/GlyphAtlas';
 import { StyleGlyph } from '../symbol/AlphaImage';
 import { getGlyphQuads } from '../symbol/SymbolQuad';
 import { getLabelPlaneMatrix, getGlCoordMatrix, pixelsToTileUnits, tileSize } from '../utils/symbol-projection';
 import CollisionIndex from '../symbol/CollisionIndex';
+import classifyRings from '../utils/classify-rings';
+// @ts-ignore
+import findPoleOfInaccessibility from '../utils/find_pole_of_inaccessibility';
 
 interface IVectorTileLineLayerOptions {
   geoJSON: any;
 }
 
-interface IClusterFeature {
+interface ITextFeature {
   position: [number, number];
   text: string;
 }
 
-// interface IClusterText {
-//   text: string;
-//   position: number[];
-//   weight: number;
-// }
-
-const defaultFontStack = 'sans-serif';
 // const compareClusterText = (t1: IClusterText, t2: IClusterText) => {
 //   return t2.weight - t1.weight;
 // }
@@ -59,6 +55,8 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
   // style variables
 
   public textField = 'name';
+  public fontFamily = 'Monaco, monospace';
+  public fontWeight = 400;
   public fontSize = 14.;
   public fontColor = [0, 0, 0];
   public fontOpacity = 1.0;
@@ -79,6 +77,7 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
   private glyphAtlas: GlyphAtlas;
   private glyphMap: { [key: number]: StyleGlyph };
   private glyphAtlasTexture: any;
+  private fontStack: string;
 
   private collisionIndex: CollisionIndex;
 
@@ -182,8 +181,10 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
    * 创建 Atlas
    */
   initGlyphAtlas() {
-    const glyphMap = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '.split('').map(char => {
-      return generateSDF('', char);
+    const fontStack = `${this.fontFamily} ${this.fontWeight}`;
+    this.fontStack = fontStack;
+    const glyphMap = getDefaultCharacterSet().map(char => {
+      return generateSDF(fontStack, char);
     }).reduce((prev, cur) => {
       // @ts-ignore
       prev[cur.id] = cur;
@@ -194,14 +195,14 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
       this.glyphMap = {};
     }
 
-    this.glyphMap[defaultFontStack] = glyphMap;
+    this.glyphMap[fontStack] = glyphMap;
     
     this.glyphAtlas = new GlyphAtlas(this.glyphMap);
 
     this.glyphAtlasTexture = this.regl.texture();
   }
 
-  buildTextBuffers(textArray: IClusterFeature[], posMatrix: mat4) {
+  buildTextBuffers(textArray: ITextFeature[], posMatrix: mat4) {
     const charPositionBuffer: number[][] = [];
     const charUVBuffer: [number, number][] = [];
     const charOffsetBuffer: [number, number][] = [];
@@ -219,7 +220,7 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
       // 锚点
       // const anchor = new Point(position[0], position[1]);
       // 计算布局
-      const shaping = shapeText(text, this.glyphMap, defaultFontStack, 0, 24, this.symbolAnchor, this.textJustify, this.textSpacing, textOffset, 1);
+      const shaping = shapeText(text, this.glyphMap, this.fontStack, 0, 24, this.symbolAnchor, this.textJustify, this.textSpacing, textOffset, 1);
 
       if (shaping) {
         // 加入索引
@@ -274,7 +275,7 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
     };
   }
 
-  renderText(clusters: IClusterFeature[], posMatrix: Float32Array, overscaledZ: number) {
+  renderText(textFeatures: ITextFeature[], posMatrix: Float32Array, overscaledZ: number) {
     const { width, height, data } = this.glyphAtlas.image;
     // @ts-ignore
     const s = pixelsToTileUnits(overscaledZ, 1, this.map.transform.zoom);
@@ -284,7 +285,7 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
     const glCoordMatrix = getGlCoordMatrix(posMatrix, false, false, this.map.transform, s);
 
     // draw text
-    const { indexBuffer: textIndexes, charOffsetBuffer, charPositionBuffer, charUVBuffer } = this.buildTextBuffers(clusters, posMatrix);
+    const { indexBuffer: textIndexes, charOffsetBuffer, charPositionBuffer, charUVBuffer } = this.buildTextBuffers(textFeatures, posMatrix);
     this.drawText({
       'u_matrix': posMatrix,
       'u_label_matrix': labelPlaneMatrix,
@@ -332,14 +333,35 @@ export default class TextLayer extends MapboxAdapterLayer implements IVectorTile
       // retrieve target tile
       const t = this.tileIndex.getTile(tile.canonical.z, tile.canonical.x, tile.canonical.y);
       if (t && t.features && t.features.length) {
-        const points: IClusterFeature[] = [];
+        const textFeatures: ITextFeature[] = [];
         t.features.forEach((feature: any) => {
-          points.push({
-            position: feature.geometry[0],
-            text: feature.tags[this.textField],
-          });
+          // Point 要素，锚点无需计算
+          if (feature.type === 1) {
+            textFeatures.push({
+              position: feature.geometry[0],
+              text: feature.tags[this.textField],
+            });
+          }
+          // Polygon 要素
+          if (feature.type === 3) {
+            const rings = feature.geometry.map((ring: number[][]) => {
+              return ring.map((p: number[]) => new Point(p[0], p[1]));
+            });
+            for (const polygon of classifyRings(rings, 0)) {
+              // 计算多边形的难抵极
+              // const poi = findPoleOfInaccessibility(polygon, 16);
+              // textFeatures.push({
+              //   position: [poi.x, poi.y],
+              //   text: feature.tags[this.textField],
+              // });
+              textFeatures.push({
+                position: [polygon[0][0].x, polygon[0][0].y],
+                text: feature.tags[this.textField],
+              });
+            }
+          }
         });
-        this.renderText(points, tile.posMatrix, tile.overscaledZ);
+        this.renderText(textFeatures, tile.posMatrix, tile.overscaledZ);
       }
     });
   }

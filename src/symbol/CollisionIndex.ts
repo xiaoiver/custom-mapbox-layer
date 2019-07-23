@@ -40,12 +40,6 @@ export default class CollisionIndex {
 
   placeCollisionBox(collisionBox: SingleCollisionBox, allowOverlap: boolean, textPixelRatio: number, posMatrix: mat4, collisionGroupPredicate?: any): { box: Array<number>, offscreen: boolean } {
     const projectedPoint = this.projectAndGetPerspectiveRatio(posMatrix, collisionBox.anchorPointX, collisionBox.anchorPointY);
-    // const tileToViewport = textPixelRatio * projectedPoint.perspectiveRatio;
-    // const tlX = collisionBox.x1 * tileToViewport + projectedPoint.point.x;
-    // const tlY = collisionBox.y1 * tileToViewport + projectedPoint.point.y;
-    // const brX = collisionBox.x2 * tileToViewport + projectedPoint.point.x;
-    // const brY = collisionBox.y2 * tileToViewport + projectedPoint.point.y;
-    debugger;
 
     const tlX = collisionBox.x1 + projectedPoint.point.x;
     const tlY = collisionBox.y1 + projectedPoint.point.y;
